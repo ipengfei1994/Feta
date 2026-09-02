@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+
+# AI 助手工作目录（项目记忆，不入库）
+.workbuddy/
+
+# 数据（体积大 / 可由脚本重建，不入库；干预池由 scripts/build_intervention_pool.py 重建）
+data/*.csv
+data/*.zip
+data/embeddings/
+data/training.1600000.processed.noemoticon.csv/
+
+# 模型权重（90MB，由 ModelScope 下载，见设计文档 1.5.1）
+models/
+
+# 工具
+.uv/
+.DS_Store
+Thumbs.db

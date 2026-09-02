@@ -1,0 +1,33 @@
+# feta 全局配置
+# 权重、阈值、路径统一放这里，改参不改代码
+
+paths:
+  interventions: data/interventions.csv   # 干预池（含离线预计算的 384 维 embedding）
+
+# 干预池构建（scripts/build_intervention_pool.py 读取）
+# 从 Sentiment140 正向推文清洗 + 筛选 + 打标 + 向量预计算，产出 interventions.csv
+pool_builder:
+  source: data/training.1600000.processed.noemoticon.csv/training.1600000.processed.noemoticon.csv
+  output: data/interventions.csv
+  max_pool_size: 3000   # 最终保留条数上限（Top-N，按正向疏导打分）
+  min_score: 1          # 正向疏导关键词最低命中分（低于则视为口语刷屏，剔除）
+  min_words: 5          # 清洗后最短单词数
+  max_words: 30         # 清洗后最长单词数
+  embedding_backend: auto   # auto | hashing | all-MiniLM-L6-v2（auto 优先加载本地 models/all-MiniLM-L6-v2，免联网）
+
+recommender:
+  top_k: 5                 # 最终输出条数
+  weights:                 # 精排多因子权重
+    w_sim: 0.8             # 余弦相似度权重
+    w_boost: 0.2           # 正能量 boost 权重
+
+safety:
+  # 命中以下风险等级 → 触发安全断路器，降级输出热线卡片（不推博文）
+  circuit_breaker_levels:
+    - Level_4_High
+    - Level_4_High_Risk
+    - Suicide
+  hotline:
+    id: "hotline-001"
+    text: "你现在可能正经历非常艰难的时刻，请立即联系可信赖的人，或拨打 24 小时心理援助热线 400-161-9995。"
+    target_issue: "Crisis_Intervention"
