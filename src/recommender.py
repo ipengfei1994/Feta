@@ -24,14 +24,17 @@ profile_data 结构：
 
 输出（dict）：
     {
-      "status": "SUCCESS" | "CIRCUIT_BREAKER_TRIGGERED",
+      "status": "SUCCESS" | "SUCCESS_WITH_REFERRAL",
       "risk_level": "Level_2_Moderate",
       "recommendations": [
           {"id", "text", "target_issue", "similarity_score", "final_score"}, ...
-      ]
+      ],
+      "referral": None | {...},        # 高危时后台转介记录（risk_level/target_issue/reason/logged）
+      "crisis_resources": [...]        # 高危时附带的危机资源卡片（热线等），不作为唯一输出
     }
 
-五步：①安全断路器 ②归因硬/软召回 ③余弦相似度 ④多因子加权+黑名单 ⑤Top-K 截取
+五步：①归因硬/软召回 ②余弦相似度 ③多因子加权+黑名单 ④Top-K 截取
+      ⑤风险转介（高危后台记录，不拦截、不剥夺使用权）
 """
 
 from __future__ import annotations
@@ -41,17 +44,20 @@ from typing import Optional
 
 import numpy as np
 
-# 触发断路器的高危等级默认值（config 未配置时兜底）
-DEFAULT_HIGH_RISK_LEVELS = {"Level_4_High", "Level_4_High_Risk", "Suicide"}
+try:
+    from src.referral import ReferralLogger   # 项目内包导入（pipeline 场景）
+except ImportError:                            # 直接执行 src/recommender.py 时
+    from referral import ReferralLogger
 
-# 危机热线卡片默认内容（config 未配置时兜底）
+# 触发后台转介的高危等级默认值（config 未配置时兜底）
+DEFAULT_REFERRAL_LEVELS = {"Level_4_High", "Level_4_High_Risk", "Suicide"}
+
+# 危机资源卡片默认内容（config 未配置时兜底）——附在 feed 后，不作为唯一输出
 DEFAULT_HOTLINE_CARD = {
     "id": "hotline-001",
     "text": "你现在可能正经历非常艰难的时刻，请立即联系可信赖的人，"
             "或拨打 24 小时心理援助热线 400-161-9995。",
     "target_issue": "Crisis_Intervention",
-    "similarity_score": 1.0,
-    "final_score": 1.0,
 }
 
 
@@ -66,13 +72,13 @@ class Recommender:
         self.w_boost = float(w.get("w_boost", 0.2))
 
         safety = cfg.get("safety", {})
-        self.high_risk_levels = set(
-            safety.get("circuit_breaker_levels", DEFAULT_HIGH_RISK_LEVELS)
+        self.referral_levels = set(
+            safety.get("referral_levels", DEFAULT_REFERRAL_LEVELS)
         )
         self.hotline_card = dict(safety.get("hotline", DEFAULT_HOTLINE_CARD))
-        # 补齐热线的相似度/最终分字段（保证输出结构统一）
-        self.hotline_card.setdefault("similarity_score", 1.0)
-        self.hotline_card.setdefault("final_score", 1.0)
+
+        # 风险轨道：高危后台转介记录器（不拦截推荐）
+        self.referral_logger = ReferralLogger(cfg)
 
         self.items: list[dict] = []          # 干预池元数据（含 tags/boost/strategy）
         self.embeddings: np.ndarray = None   # (N, 384) 已归一化
@@ -106,46 +112,55 @@ class Recommender:
     # ------------------------------ 主入口 ------------------------------
     def recommend(self, user_vector: np.ndarray,
                   profile_data: dict, top_k: Optional[int] = None) -> dict:
-        """五步：断路器 → 召回 → 相似度 → 加权+黑名单 → Top-K。"""
+        """五步：召回 → 相似度 → 加权+黑名单 → Top-K → 风险转介(高危后台记录，不拦截)。"""
         top_k = top_k or self.top_k
         risk_level = profile_data.get("risk_level", "Level_1_Low")
 
-        # ① 安全断路器：高危直接降级热线，切断博文推荐
-        if risk_level in self.high_risk_levels:
-            return {
-                "status": "CIRCUIT_BREAKER_TRIGGERED",
-                "risk_level": risk_level,
-                "recommendations": [dict(self.hotline_card)],
-            }
+        # ⑤ 风险转介判定（先算，后拼装）——高危只后台记录，不拦截推荐
+        status, referral, crisis_resources = self._referral_for(risk_level, profile_data)
 
-        # ② 归因召回：target_issue 硬过滤，不足 top_k 软降级为全量库
+        # ① 归因召回：target_issue 硬过滤，不足 top_k 软降级为全量库
         idxs = self._recall(profile_data, top_k)
-        if not idxs:
-            return {"status": "SUCCESS", "risk_level": risk_level, "recommendations": []}
+        recommendations: list[dict] = []
+        if idxs:
+            # ② 余弦相似度
+            sims = self._cosine_similarity(user_vector, self.embeddings[idxs])
 
-        # ③ 余弦相似度
-        sims = self._cosine_similarity(user_vector, self.embeddings[idxs])
+            # ③ 多因子加权 + 负向黑名单剔除
+            scored = self._rank_and_filter(idxs, sims, profile_data)
 
-        # ④ 多因子加权 + 负向黑名单剔除
-        scored = self._rank_and_filter(idxs, sims, profile_data)
+            # ④ Top-K 截取
+            scored.sort(key=lambda x: x[2], reverse=True)
+            recommendations = [
+                {
+                    "id": self.items[i]["id"],
+                    "text": self.items[i]["text"],
+                    "target_issue": self.items[i]["target_issue"],
+                    "similarity_score": round(float(sim), 4),
+                    "final_score": round(float(final), 4),
+                }
+                for i, sim, final in scored[:top_k]
+            ]
 
-        # ⑤ Top-K 截取
-        scored.sort(key=lambda x: x[2], reverse=True)
-        recommendations = [
-            {
-                "id": self.items[i]["id"],
-                "text": self.items[i]["text"],
-                "target_issue": self.items[i]["target_issue"],
-                "similarity_score": round(float(sim), 4),
-                "final_score": round(float(final), 4),
-            }
-            for i, sim, final in scored[:top_k]
-        ]
         return {
-            "status": "SUCCESS",
+            "status": status,
             "risk_level": risk_level,
             "recommendations": recommendations,
+            "referral": referral,
+            "crisis_resources": crisis_resources,
         }
+
+    # ------------------------ ⑤ 风险转介（不拦截） ------------------------
+    def _referral_for(self, risk_level: str, profile_data: dict):
+        """高危 → 后台转介 + 附加危机资源；否则正常。返回 (status, referral, resources)。"""
+        if risk_level in self.referral_levels:
+            referral = self.referral_logger.log(
+                risk_level=risk_level,
+                target_issue=profile_data.get("target_issue", ""),
+                context=profile_data.get("original_text", ""),
+            )
+            return "SUCCESS_WITH_REFERRAL", referral, [dict(self.hotline_card)]
+        return "SUCCESS", None, []
 
     # ------------------------ ② 归因硬/软召回 ------------------------
     def _recall(self, profile_data: dict, top_k: int) -> list[int]:
@@ -236,10 +251,14 @@ if __name__ == "__main__":
               f"final={r['final_score']:.3f}] ({r['target_issue']}) {r['text']}")
 
     print("\n" + "=" * 64)
-    print("高危画像（Level_4_High）触发断路器：")
+    print("高危画像（Level_4_High）：照常推荐 + 后台转介 + 危机资源")
     print("=" * 64)
-    high_profile = dict(profile, risk_level="Level_4_High", target_issue="Emotional_Health")
+    high_profile = dict(profile, risk_level="Level_4_High", target_issue="Emotional_Health",
+                        original_text="（演示）用户表达了自伤念头，需要人工介入。")
     result2 = rec.recommend(user_vec, high_profile)
     print(f"status={result2['status']}")
+    print(f"referral={result2['referral']}")
+    print(f"crisis_resources={result2['crisis_resources']}")
+    print("--- 博文推荐（未被拦截，照常返回）---")
     for r in result2["recommendations"]:
         print(f"  [id={r['id']}] ({r['target_issue']}) {r['text']}")

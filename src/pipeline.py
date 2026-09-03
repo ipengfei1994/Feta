@@ -36,9 +36,11 @@ class Pipeline:
         cleaned = preprocess.clean(raw_text)
         # 2. 分类 → profile_data
         profile_data = classifier.classify(cleaned)
+        # 2.1 附加原始文本（转介上下文，供后台业务线查看；可选字段）
+        profile_data["original_text"] = cleaned
         # 3. 向量化（基于 embedding_prompt 编码）
         user_vector = self.embedder.embed(profile_data["embedding_prompt"])
-        # 4. 推荐
+        # 4. 推荐（高危不拦截，后台转介）
         result = self.recommender.recommend(user_vector, profile_data)
 
         return {
@@ -47,6 +49,8 @@ class Pipeline:
             "status": result["status"],
             "risk_level": result["risk_level"],
             "recommendations": result["recommendations"],
+            "referral": result.get("referral"),
+            "crisis_resources": result.get("crisis_resources", []),
         }
 
 
@@ -72,3 +76,8 @@ if __name__ == "__main__":
         for rec in r["recommendations"]:
             print(f"  [id={rec['id']} | sim={rec['similarity_score']:.3f} | "
                   f"final={rec['final_score']:.3f}] ({rec['target_issue']}) {rec['text']}")
+        if r["referral"]:
+            print(f"  ⚠ 后台转介：{r['referral']['risk_level']} / "
+                  f"{r['referral']['target_issue']} → 已写入 risk_referrals.csv")
+        for res in r["crisis_resources"]:
+            print(f"  [危机资源] {res['text']}")

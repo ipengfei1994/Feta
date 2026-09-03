@@ -1,6 +1,6 @@
 # feta — 基于社交媒体文本的学生心理预警与干预推荐系统
 
-面向学生群体的心理风险预警与正向疏导内容推荐系统：从社交媒体文本出发，识别心理风险等级与压力源归因，召回并精排正向疏导内容（干预池），对高危情况触发危机热线降级。
+面向学生群体的心理风险预警与正向疏导内容推荐系统：从社交媒体文本出发，识别心理风险等级与压力源归因，召回并精排正向疏导内容（干预池）。任何风险等级都照常获得推荐（不剥夺使用权）；高危用户额外在后台生成转介记录，供人工/社工等业务线介入。
 
 ## 技术栈
 
@@ -41,8 +41,9 @@ feta/
 │   ├── classifier.py     # 风险等级 + 压力源归因 + embedding_prompt（寇/李）
 │   ├── embedder.py       # 双后端向量编码：MiniLM(BERT) / 哈希(TF-IDF)（寇/李）
 │   ├── recommender.py    # 召回与精排推荐层（李鹏飞）
+│   ├── referral.py       # 高危后台转介记录，不拦截推荐（李鹏飞）
 │   └── pipeline.py       # 端到端编排（李鹏飞）
-├── data/                 # interventions.csv 干预池 + 原始数据集
+├── data/                 # interventions.csv 干预池 + risk_referrals.csv 转介记录 + 原始数据集
 ├── models/               # all-MiniLM-L6-v2 本地权重（不入库）
 ├── configs/config.yaml   # 权重 / 阈值 / 路径
 ├── scripts/              # 构建与实验脚本
@@ -72,9 +73,11 @@ profile_data = {
 
 ```python
 {
-    "status": "SUCCESS",              # 或 "CIRCUIT_BREAKER_TRIGGERED"
+    "status": "SUCCESS",              # 或 "SUCCESS_WITH_REFERRAL"（高危 + 已转介）
     "risk_level": "Level_2_Moderate",
     "recommendations": [{"id", "text", "target_issue", "similarity_score", "final_score"}, ...],
+    "referral": None,                 # 高危时：{timestamp, risk_level, target_issue, reason, logged}
+    "crisis_resources": [],           # 高危时附带危机资源卡片（热线等），不作为唯一输出
 }
 ```
 

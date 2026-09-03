@@ -22,8 +22,8 @@ recommender:
     w_boost: 0.2           # 正能量 boost 权重
 
 safety:
-  # 命中以下风险等级 → 触发安全断路器，降级输出热线卡片（不推博文）
-  circuit_breaker_levels:
+  # 命中以下风险等级 → 后台转介（记录画像，供其他业务线消费），不拦截推荐
+  referral_levels:
     - Level_4_High
     - Level_4_High_Risk
     - Suicide
@@ -31,3 +31,8 @@ safety:
     id: "hotline-001"
     text: "你现在可能正经历非常艰难的时刻，请立即联系可信赖的人，或拨打 24 小时心理援助热线 400-161-9995。"
     target_issue: "Crisis_Intervention"
+
+# 风险转介（src/referral.py 读取）：高危用户后台记录，推给其他业务线
+referral:
+  enabled: true                    # 转介开关
+  output: data/risk_referrals.csv  # 转介记录落盘路径（后台消费）
