@@ -41,7 +41,7 @@ feta/
 │   ├── classifier.py     # 风险等级 + 压力源归因 + embedding_prompt（寇/李）
 │   ├── embedder.py       # 双后端向量编码：MiniLM(BERT) / 哈希(TF-IDF)（寇/李）
 │   ├── recommender.py    # 召回与精排推荐层（李鹏飞）
-│   ├── referral.py       # 高危后台转介记录，不拦截推荐（李鹏飞）
+│   ├── referral.py       # 高危后台转介记录，不拦截推荐；推业务线通道预留（李鹏飞）
 │   └── pipeline.py       # 端到端编排（李鹏飞）
 ├── data/                 # interventions.csv 干预池 + risk_referrals.csv 转介记录 + 原始数据集
 ├── models/               # all-MiniLM-L6-v2 本地权重（不入库）
@@ -85,6 +85,11 @@ profile_data = {
 
 - **必须走英文 `embedding_prompt`**：中文原文直接编码查英文池会失效（Hit@5 从 97.8% 掉到 13%）。classifier 需输出英文语义描述，详见 `scripts/compare_backends.py`。
 - **相似度分数只在同后端内可比**：哈希基线相似度虚高不可靠，MiniLM 低而准。
+
+## 当前阶段边界
+
+- **英文数据集闭环即可**：整条流水线（classifier 英文 Prompt → 英文干预池 → 语义检索）以英文为验收标准；中文干预池（人工策展中文疏导内容）列为后续阶段，代码复用无需改动。
+- **转介只后台落盘**：高危用户的后台转介当前只写入 `data/risk_referrals.csv`，「推给业务线同学」的自动推送通道（腾讯文档/企业微信/内部 API）为预留项，后续接通道只改 `src/referral.py`。
 
 ## 分工
 

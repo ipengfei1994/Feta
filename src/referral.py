@@ -9,9 +9,16 @@
 
 设计原则：
   - 只记录、不拦截：推荐照常，高危用户额外生成一条转介单
-  - 落盘为 CSV（data/risk_referrals.csv）；未来可替换为 HTTP 推送 / 消息队列 /
-    腾讯文档等 Sink，接口签名不变
+  - 落盘为 CSV（data/risk_referrals.csv）
   - 隐私：context（原文）可选，默认不落；正式上线建议只存脱敏画像 + 去标识 ID
+
+TODO（预留，当前阶段不实现）：
+  「推给业务线同学」这一步目前只做到「后台落盘 CSV」，尚未接真实推送通道。
+  未来需要自动推送给人工客服 / 社工 / 辅导员时，仅改本模块的落盘逻辑即可：
+    - 腾讯文档：把 log() 里的 CSV 写入替换为在线表格写入
+    - 消息推送：写入后追加调用企业微信 / 邮件通知
+    - 内部 API：写入后 POST 到业务线接口
+  接口签名 log() 保持不变，上游 recommender/pipeline 无需改动。
 """
 
 from __future__ import annotations
