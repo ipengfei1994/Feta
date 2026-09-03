@@ -14,10 +14,8 @@
 # 1. 安装环境（按 uv.lock 精确还原全部依赖，含 torch）
 uv sync
 
-# 2. 准备本地向量模型（免联网，从 ModelScope 下载，约 90MB）
-#    目录：models/all-MiniLM-L6-v2/
-#    需包含：config.json / model.safetensors / vocab.txt / tokenizer.json 等
-#    下载地址：https://modelscope.cn/models/sentence-transformers/all-MiniLM-L6-v2
+# 2. 下载本地向量模型（从 ModelScope，约 90MB，零依赖脚本，绕开被代理拦截的 HuggingFace）
+uv run python scripts/download_model.py
 
 # 3. 构建干预池（从 Sentiment140 正向推文清洗→筛选→打标→向量预计算）
 uv run python scripts/build_intervention_pool.py --backend auto
@@ -47,9 +45,10 @@ feta/
 ├── models/               # all-MiniLM-L6-v2 本地权重（不入库）
 ├── configs/config.yaml   # 权重 / 阈值 / 路径
 ├── scripts/              # 构建与实验脚本
-│   ├── build_intervention_pool.py   # Sentiment140 → interventions.csv
-│   ├── compare_backends.py          # TF-IDF vs BERT 基线对比
-│   └── make_demo_pool.py            # 中文演示池
+│   ├── download_model.py             # 从 ModelScope 下载 all-MiniLM-L6-v2（零依赖）
+│   ├── build_intervention_pool.py    # Sentiment140 → interventions.csv
+│   ├── compare_backends.py           # TF-IDF vs BERT 基线对比
+│   └── make_demo_pool.py             # 中文演示池
 ├── pyproject.toml        # uv 项目定义
 └── uv.lock               # 依赖精确锁定
 ```
