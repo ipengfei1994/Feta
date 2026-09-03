@@ -16,6 +16,11 @@ data/training.1600000.processed.noemoticon.csv/
 # 模型权重（90MB，由 ModelScope 下载，见设计文档 1.5.1）
 models/
 
+# IDE / 编辑器
+.idea/
+.vscode/
+*.iml
+
 # 工具
 .uv/
 .DS_Store
