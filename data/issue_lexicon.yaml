@@ -1,0 +1,64 @@
+# feta 心理画像词表
+#
+# 数据与逻辑分离：本文件存"业务知识"，classifier.py 只负责"如何使用知识"。
+# 改词表不需要改代码，编辑此文件即可生效。
+#
+# 路径：data/issue_lexicon.yaml
+# 加载方：src/classifier.py (_load_lexicon, 模块级 lru_cache 缓存)
+
+# ─────────────────────────────────────────────────────────────
+# 8 大压力源归因词表
+#   key   : target_issue 枚举名（与干预池打标对齐，**禁止改名**）
+#   value : 触发该归因的中文关键词列表（命中即累计 1 分）
+# ─────────────────────────────────────────────────────────────
+target_issues:
+  Academic_Stress:    [考试, 成绩, 挂科, 作业, 论文, 绩点, 复习, 保研, 考研, 学业]
+  Appearance_Anxiety: [容貌, 长相, 外貌, 颜值, 身材, 太胖, 太瘦, 整容, 照镜子, 不好看, 丑]
+  Interpersonal:      [朋友, 室友, 孤立, 吵架, 排挤, 社交, 分手, 冷战, 合不来]
+  Family:             [父母, 家人, 家庭, 催婚, 重男轻女, 吵架]
+  Financial_Stress:   [没钱, 穷, 兼职, 学费, 生活费, 经济]
+  Career_Future:      [找工作, 就业, 实习, 未来, 迷茫, 毕业, offer]
+  Emotional_Health:   [难过, 崩溃, 低落, 孤独, emo, 抑郁, 焦虑, 压力大, 累]
+  Sleep_Disorder:     [失眠, 睡不着, 睡眠, 熬夜, 多梦]
+
+# ─────────────────────────────────────────────────────────────
+# 自杀/自伤关键词（任意一条命中即升级为 Level_4_High）
+# 中英文双语，英文版用于英文 demo 与跨语种回归测试
+# ─────────────────────────────────────────────────────────────
+suicide_keywords:
+  # 中文
+  - 自杀
+  - 不想活
+  - 轻生
+  - 结束生命
+  - 活不下去
+  - 解脱
+  - 跳楼
+  - 割腕
+  # 英文
+  - want to die
+  - kill myself
+  - end my life
+  - no reason to live
+  - better off dead
+  - can't go on
+  - end it all
+
+# ─────────────────────────────────────────────────────────────
+# embedding_prompt 模板：每条对应一个归因，用于生成英文语义描述
+#
+# ⚠️ 干预池是英文语料，embedding_prompt 必须英文。实验结论：
+#    中文原文直查英文池 Hit@5 会从 97.8% 掉到 13%。
+#
+# key 命名：与 target_issues 一致；多一个 "General" 作为零命中兜底。
+# ─────────────────────────────────────────────────────────────
+english_issue_prompts:
+  Academic_Stress:    "Coping with exam pressure and study stress, seeking motivation and calm focus"
+  Appearance_Anxiety: "Seeking self-acceptance and body confidence, coping with anxiety about looks"
+  Interpersonal:      "Resolving friendship and roommate conflict, seeking communication skills and connection"
+  Family:             "Coping with family tension and parents arguing, seeking emotional support"
+  Financial_Stress:   "Coping with money worries and budgeting stress as a student"
+  Career_Future:      "Overcoming job hunting anxiety and career uncertainty, staying hopeful about the future"
+  Emotional_Health:   "Lifting low mood and emptiness, finding hope and emotional balance"
+  Sleep_Disorder:     "Improving sleep quality, relaxation techniques for insomnia relief"
+  General:            "Relaxation and mindfulness, gentle comfort and positive energy"

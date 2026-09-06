@@ -1,15 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-向量 Embedding 层（接口锁定 + 基线实现）
-
-负责人：寇丽雯 / 李鑫（正式用 all-MiniLM-L6-v2 替换 HashingEmbedder）
+向量 Embedding 层。
 
 提供两个后端：
-- HashingEmbedder：字符 n-gram 特征哈希（TF-IDF 级基线，零依赖，永远可用）
-- SentenceTransformerEmbedder：all-MiniLM-L6-v2（BERT 级，装了 sentence-transformers 自动启用）
+- HashingEmbedder            ：字符 n-gram 特征哈希（TF-IDF 级基线，零依赖，永远可用）
+- SentenceTransformerEmbedder：all-MiniLM-L6-v2（BERT 级，需 sentence-transformers）
 
-对 recommender 而言，只认 `embed() -> np.ndarray(384,)` 这一个接口，
-后端怎么换都不影响下游。
+统一入口：Embedder(backend="auto")，优先 BERT，缺失时自动回退哈希基线。
+
+对外接口：embed(text) -> np.ndarray(384,) 与 embed_batch(texts) -> np.ndarray(N, 384)
+维度锁定为 384，更换模型必须同步重建干预池向量（见 scripts/build_intervention_pool.py）。
+
+模型加载顺序：本地 models/all-MiniLM-L6-v2/ 优先；不存在时回退到 HuggingFace Hub
+（本地权重下载脚本见 scripts/download_model.py）。
 """
 
 from __future__ import annotations
@@ -107,8 +110,3 @@ class Embedder:
 
     def embed_batch(self, texts: list[str]) -> np.ndarray:
         return self._impl.embed_batch(texts)
-
-
-# 兼容旧调用（李鹏飞的 recommender 测试可直接用）
-def embed(text: str) -> np.ndarray:
-    return HashingEmbedder().embed(text)

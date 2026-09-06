@@ -1,22 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-3.3 召回与精排推荐层  src/recommender.py
+召回与精排推荐层。
 
-负责人：李鹏飞
-
-输入（Data Contract，与 3.1 / 3.2 对齐）：
-    user_vector  : numpy.ndarray (384,)   —— 基于 embedding_prompt 编码的用户向量
-    profile_data : dict                   —— 3.1 吐出的结构化心理画像
+输入（Data Contract）：
+    user_vector  : numpy.ndarray (384,)   基于 embedding_prompt 编码的用户向量
+    profile_data : dict                   心理画像层（classifier）吐出的结构化数据
 
 profile_data 结构：
     {
-      "risk_level": "Level_2_Moderate",        # Level_1_Low ~ Level_4_High
-      "target_issue": "Academic_Stress",       # 8 大类压力源之一
-      "strategy_weights": {                    # 干预策略分类权重
+      "risk_level": "Level_2_Moderate",        Level_1_Low ~ Level_4_High
+      "target_issue": "Academic_Stress",       8 大类压力源之一
+      "strategy_weights": {                    干预策略分类权重
           "relaxation": 0.35, "cognitive": 0.25,
           "healing": 0.25, "lifestyle": 0.15
       },
-      "negative_rules": {                      # 负向黑名单过滤规则
+      "negative_rules": {                      负向黑名单过滤规则
           "exclude_tags": ["fast_paced", "comparison"],
           "max_arousal_score": 0.4
       }
@@ -29,8 +27,8 @@ profile_data 结构：
       "recommendations": [
           {"id", "text", "target_issue", "similarity_score", "final_score"}, ...
       ],
-      "referral": None | {...},        # 高危时后台转介记录（risk_level/target_issue/reason/logged）
-      "crisis_resources": [...]        # 高危时附带的危机资源卡片（热线等），不作为唯一输出
+      "referral": None | {...},        高危时后台转介记录（risk_level/target_issue/reason/logged）
+      "crisis_resources": [...]        高危时附带的危机资源卡片（热线等），不作为唯一输出
     }
 
 五步：①归因硬/软召回 ②余弦相似度 ③多因子加权+黑名单 ④Top-K 截取

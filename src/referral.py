@@ -1,23 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-风险转介记录模块  src/referral.py
-
-负责人：李鹏飞
+风险转介记录模块。
 
 职责：把高危用户画像「后台记录」下来，供其他业务线（人工客服 / 社工 / 辅导员）消费。
     —— 不拦截推荐、不剥夺用户使用权，是一条独立于推荐轨道的「风险轨道」。
 
 设计原则：
   - 只记录、不拦截：推荐照常，高危用户额外生成一条转介单
-  - 落盘为 CSV（data/risk_referrals.csv）
+  - 落盘为 CSV（默认 data/risk_referrals.csv，路径可在 configs/config.yaml 调整）
   - 隐私：context（原文）可选，默认不落；正式上线建议只存脱敏画像 + 去标识 ID
 
-TODO（预留，当前阶段不实现）：
-  「推给业务线同学」这一步目前只做到「后台落盘 CSV」，尚未接真实推送通道。
-  未来需要自动推送给人工客服 / 社工 / 辅导员时，仅改本模块的落盘逻辑即可：
-    - 腾讯文档：把 log() 里的 CSV 写入替换为在线表格写入
-    - 消息推送：写入后追加调用企业微信 / 邮件通知
-    - 内部 API：写入后 POST 到业务线接口
+扩展点（未来接真实推送通道时仅改本模块的落盘逻辑即可）：
+  - 在线表格：把 log() 里的 CSV 写入替换为在线表格写入
+  - 消息推送：写入后追加调用企业微信 / 邮件通知
+  - 内部 API：写入后 POST 到业务线接口
   接口签名 log() 保持不变，上游 recommender/pipeline 无需改动。
 """
 
@@ -44,7 +40,7 @@ class ReferralLogger:
             context: str = "", reason: str = "") -> dict:
         """写入一条转介记录，返回该记录 dict（含 logged 标记）。
 
-        context：可选原始文本（转介给业务线同学的上下文）；隐私敏感，默认空。
+        context：可选原始文本（转介给业务线的上下文）；隐私敏感，默认空。
         """
         record = {
             "timestamp": datetime.now().isoformat(timespec="seconds"),

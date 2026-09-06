@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-从 Sentiment140 正向推文构建 data/interventions.csv 干预池（正向疏导知识库）
-
-负责人：李鹏飞
+从 Sentiment140 正向推文构建 data/interventions.csv 干预池（正向疏导知识库）。
 
 四步流水线：
     ① 筛选与预清洗   —— 只取 target=4 正向推文；去 @用户名 / URL / HTML 实体 / 重复标点；长度过滤
@@ -10,7 +8,7 @@
     ③ 自动归因打标   —— 英文关键词规则映射到 8 大压力源 + General（默认），同时映射干预策略
     ④ 向量预计算     —— 用 all-MiniLM-L6-v2（缺依赖时回退哈希基线）批量编码 384 维向量
 
-产出字段（对齐 3.3 层 Data Contract）：
+产出字段（对齐推荐层 Data Contract）：
     id, text, target_issue, boost_score, tags, arousal_score, strategy, embedding
 
 用法：

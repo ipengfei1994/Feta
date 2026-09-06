@@ -33,15 +33,15 @@ uv run python src/recommender.py
 
 ```
 feta/
-├── app/                  # Streamlit 界面（王定祥）
+├── app/                  # Streamlit 界面
 ├── src/                  # 核心流水线
-│   ├── preprocess.py     # 文本清洗（寇/李）
-│   ├── classifier.py     # 风险等级 + 压力源归因 + embedding_prompt（寇/李）
-│   ├── embedder.py       # 双后端向量编码：MiniLM(BERT) / 哈希(TF-IDF)（寇/李）
-│   ├── recommender.py    # 召回与精排推荐层（李鹏飞）
-│   ├── referral.py       # 高危后台转介记录，不拦截推荐；推业务线通道预留（李鹏飞）
-│   └── pipeline.py       # 端到端编排（李鹏飞）
-├── data/                 # interventions.csv 干预池 + risk_referrals.csv 转介记录 + 原始数据集
+│   ├── preprocess.py     # 文本清洗
+│   ├── classifier.py     # 风险等级 + 压力源归因 + embedding_prompt
+│   ├── embedder.py       # 双后端向量编码：MiniLM(BERT) / 哈希(TF-IDF)
+│   ├── recommender.py    # 召回与精排推荐层
+│   ├── referral.py       # 高危后台转介记录，不拦截推荐；推业务线通道预留
+│   └── pipeline.py       # 端到端编排
+├── data/                 # 词表 / interventions.csv 干预池 / risk_referrals.csv 转介记录 / 原始数据集
 ├── models/               # all-MiniLM-L6-v2 本地权重（不入库）
 ├── configs/config.yaml   # 权重 / 阈值 / 路径
 ├── scripts/              # 构建与实验脚本
@@ -88,12 +88,4 @@ profile_data = {
 ## 当前阶段边界
 
 - **英文数据集闭环即可**：整条流水线（classifier 英文 Prompt → 英文干预池 → 语义检索）以英文为验收标准；中文干预池（人工策展中文疏导内容）列为后续阶段，代码复用无需改动。
-- **转介只后台落盘**：高危用户的后台转介当前只写入 `data/risk_referrals.csv`，「推给业务线同学」的自动推送通道（腾讯文档/企业微信/内部 API）为预留项，后续接通道只改 `src/referral.py`。
-
-## 分工
-
-| 模块 | 负责人 |
-|---|---|
-| recommender / pipeline / 整体结构 | 李鹏飞 |
-| classifier / embedder / preprocess | 寇丽雯、李鑫 |
-| Streamlit 界面 | 王定祥 |
+- **转介只后台落盘**：高危用户的后台转介当前只写入 `data/risk_referrals.csv`，「推给业务线」的自动推送通道（腾讯文档/企业微信/内部 API）为预留项，后续接通道只改 `src/referral.py`。

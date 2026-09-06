@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-主流程编排 Pipeline（负责人：李鹏飞）
+主流程编排 Pipeline。
 
 把四个模块串成一条流水线：
     原始文本 → preprocess → classifier(profile_data) → embedder(user_vector)
              → recommender(user_vector, profile_data) → Top-K Feed
 
-对外只暴露 run_pipeline()，UI 层（王定祥）只调这一个入口即可。
+对外只暴露 run_pipeline()，UI 层只调这一个入口即可。
 
 测试钩子：run_pipeline(raw_text, force_risk_level="Level_4_High")
     可强制覆盖 classifier 输出的风险等级，用于 UI 阶段验证危机卡片 / 转介落盘
