@@ -61,8 +61,8 @@ feta/
 
 ```python
 profile_data = {
-    "risk_level": "Level_2_Moderate",     # Level_1_Low ~ Level_4_High
-    "target_issue": "Academic_Stress",    # 8 大压力源之一
+    "risk_level": "Normal",                    # Normal | Anxiety | Depression | Suicidal
+    "target_issue": "Academic_Stress",         # 8 大压力源之一
     "strategy_weights": {"relaxation": 0.35, "cognitive": 0.25, "healing": 0.25, "lifestyle": 0.15},
     "negative_rules": {"exclude_tags": ["fast_paced", "comparison"], "max_arousal_score": 0.4},
 }
@@ -73,7 +73,7 @@ profile_data = {
 ```python
 {
     "status": "SUCCESS",              # 或 "SUCCESS_WITH_REFERRAL"（高危 + 已转介）
-    "risk_level": "Level_2_Moderate",
+    "risk_level": "Normal",
     "recommendations": [{"id", "text", "target_issue", "similarity_score", "final_score"}, ...],
     "referral": None,                 # 高危时：{timestamp, risk_level, target_issue, reason, logged}
     "crisis_resources": [],           # 高危时附带危机资源卡片（热线等），不作为唯一输出

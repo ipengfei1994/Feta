@@ -8,7 +8,7 @@
 
 对外只暴露 run_pipeline()，UI 层只调这一个入口即可。
 
-测试钩子：run_pipeline(raw_text, force_risk_level="Level_4_High")
+测试钩子：run_pipeline(raw_text, force_risk_level="Suicidal")
     可强制覆盖 classifier 输出的风险等级，用于 UI 阶段验证危机卡片 / 转介落盘
     渲染路径。生产代码不传此参数，行为与原版完全一致。
 """
@@ -38,7 +38,7 @@ class Pipeline:
         """端到端：返回结构化结果，UI 直接渲染。
 
         force_risk_level: 仅供 UI 测试 / Demo 使用，可强制覆盖 classifier 输出的
-                          风险等级（如 "Level_4_High"），用于验证危机卡片 UI 渲染。
+                          风险等级（如 "Suicidal"），用于验证危机卡片 UI 渲染。
                           生产路径不传，行为与原版完全一致。
         """
         # 1. 清洗

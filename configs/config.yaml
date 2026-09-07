@@ -24,9 +24,7 @@ recommender:
 safety:
   # 命中以下风险等级 → 后台转介（记录画像，供其他业务线消费），不拦截推荐
   referral_levels:
-    - Level_4_High
-    - Level_4_High_Risk
-    - Suicide
+    - Suicidal
   hotline:
     id: "hotline-001"
     text: "你现在可能正经历非常艰难的时刻，请立即联系可信赖的人，或拨打 24 小时心理援助热线 400-161-9995。"

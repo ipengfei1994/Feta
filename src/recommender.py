@@ -8,7 +8,7 @@
 
 profile_data 结构：
     {
-      "risk_level": "Level_2_Moderate",        Level_1_Low ~ Level_4_High
+      "risk_level": "Normal",                    Normal | Anxiety | Depression | Suicidal
       "target_issue": "Academic_Stress",       8 大类压力源之一
       "strategy_weights": {                    干预策略分类权重
           "relaxation": 0.35, "cognitive": 0.25,
@@ -23,7 +23,7 @@ profile_data 结构：
 输出（dict）：
     {
       "status": "SUCCESS" | "SUCCESS_WITH_REFERRAL",
-      "risk_level": "Level_2_Moderate",
+      "risk_level": "Normal",
       "recommendations": [
           {"id", "text", "target_issue", "similarity_score", "final_score"}, ...
       ],
@@ -48,7 +48,7 @@ except ImportError:                            # 直接执行 src/recommender.py
     from referral import ReferralLogger
 
 # 触发后台转介的高危等级默认值（config 未配置时兜底）
-DEFAULT_REFERRAL_LEVELS = {"Level_4_High", "Level_4_High_Risk", "Suicide"}
+DEFAULT_REFERRAL_LEVELS = {"Suicidal"}
 
 # 危机资源卡片默认内容（config 未配置时兜底）——附在 feed 后，不作为唯一输出
 DEFAULT_HOTLINE_CARD = {
@@ -112,7 +112,7 @@ class Recommender:
                   profile_data: dict, top_k: Optional[int] = None) -> dict:
         """五步：召回 → 相似度 → 加权+黑名单 → Top-K → 风险转介(高危后台记录，不拦截)。"""
         top_k = top_k or self.top_k
-        risk_level = profile_data.get("risk_level", "Level_1_Low")
+        risk_level = profile_data.get("risk_level", "Normal")
 
         # ⑤ 风险转介判定（先算，后拼装）——高危只后台记录，不拦截推荐
         status, referral, crisis_resources = self._referral_for(risk_level, profile_data)
@@ -231,7 +231,7 @@ if __name__ == "__main__":
     user_vec = issue_emb + 0.1 * rng.standard_normal(issue_emb.shape)
 
     profile = {
-        "risk_level": "Level_2_Moderate",
+        "risk_level": "Normal",
         "target_issue": issue,
         "strategy_weights": {"relaxation": 0.35, "cognitive": 0.25,
                              "healing": 0.25, "lifestyle": 0.15},
@@ -249,9 +249,9 @@ if __name__ == "__main__":
               f"final={r['final_score']:.3f}] ({r['target_issue']}) {r['text']}")
 
     print("\n" + "=" * 64)
-    print("高危画像（Level_4_High）：照常推荐 + 后台转介 + 危机资源")
+    print("高危画像（Suicidal）：照常推荐 + 后台转介 + 危机资源")
     print("=" * 64)
-    high_profile = dict(profile, risk_level="Level_4_High", target_issue="Emotional_Health",
+    high_profile = dict(profile, risk_level="Suicidal", target_issue="Emotional_Health",
                         original_text="（演示）用户表达了自伤念头，需要人工介入。")
     result2 = rec.recommend(user_vec, high_profile)
     print(f"status={result2['status']}")
