@@ -177,9 +177,13 @@ class Recommender:
         return "SUCCESS", None, []
 
     def _crisis_card(self, risk_level: str, profile_data: dict) -> dict:
-        """按风险等级组装危机话术卡：分级处置动作 + 压力源建议 + 紧急热线。
+        """按风险等级组装危机话术卡。
 
-        话术库缺失或读取异常时回退到单行热线卡，保证高危路径始终有内容下发。
+        双受众：用户视角（user_facing）+ 运营视角（staff_actions）。
+        UI 只能展示 user_facing；staff_actions 仅用于内部路由/转接，绝不渲染给用户。
+        这一点是这个产品保持「内容推荐」而不是「心理诊断」的关键护栏。
+
+        话术库缺失或读取异常时回退到单行 hotline 卡，保证高危路径始终有内容下发。
         """
         try:
             playbook = _load_crisis_playbook()
@@ -191,17 +195,19 @@ class Recommender:
         if not tier:
             return dict(self.hotline_card)
 
+        user_view = tier.get("user_facing") or {
+            "summary": "If you are in immediate danger, please contact your local emergency number.",
+            "message": tier.get("summary", ""),
+        }
         advice = playbook.get("stressor_advice", {})
         target_issue = profile_data.get("target_issue", "")
         card = {
             "id": f"crisis-{risk_level.lower()}",
-            "text": tier["summary"],
+            "text": user_view.get("summary", ""),
             "target_issue": "Crisis_Intervention",
-            "level": tier["level"],
             "urgency": tier["urgency"],
-            "summary": tier["summary"],
-            "actions": list(tier["actions"]),
-            "monitor": tier["monitor"],
+            "summary": user_view.get("summary", ""),
+            "message": user_view.get("message", ""),
             "stressor_advice": advice.get(target_issue) or advice.get("General", ""),
         }
         if tier["urgency"] >= 4:

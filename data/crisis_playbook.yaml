@@ -1,85 +1,109 @@
-# feta 危机干预话术库（按风险等级分级）
+# feta Crisis Support Playbook (tiered by risk level)
 #
-# 来源：NLP 同学阶段 4 干预推荐引擎的规则化知识库，属领域知识而非统计结果。
-# 数据与逻辑分离：本文件存话术内容，src/recommender.py 只负责按等级取用。
+# Scope: English-language product surface. The Chinese version of this content
+#        is deferred to a post-launch locale track and is not maintained here.
 #
-# 加载方：src/recommender.py (_load_crisis_playbook, lru_cache)
-# 触发时机：risk_level 命中 configs/config.yaml 的 safety.referral_levels 时，
-#           话术卡附在推荐结果后返回（不拦截推荐，双轨并行）。
+# Two audiences, two field groups — keep them separate:
+#   user_facing.*  → rendered in the UI, addressed to the person, second person,
+#                    non-clinical, non-diagnostic. Safe to show.
+#   staff_actions  → operational guidance for care teams / escalation routing.
+#                    Third-person clinical reading. NEVER render to the user.
+#                    Keeping it out of the UI is what keeps this product a
+#                    content-recommendation system and not a diagnostic tool.
 #
-# ⚠️ 热线号码为公开可用号码，正式上线前需二次核实有效性。
+# Loaded by: src/recommender.py (_load_crisis_playbook, lru_cache)
+# Triggered: risk_level in configs/config.yaml → safety.referral_levels
+#            (attached after recommendations; never blocks the feed).
+#
+# Verify hotline numbers against the target launch region before go-live.
 
-# ─────────────────────────────────────────────────────────────
-# 四档风险话术（key 与 risk_level 枚举一致：Normal / Anxiety / Depression / Suicidal）
-#   level    : 中文等级名
-#   urgency  : 紧急度 1~4
-#   summary  : 一句话状态判断（UI 默认渲染此字段）
-#   actions  : 分级干预动作清单
-#   monitor  : 后续监测建议
-# ─────────────────────────────────────────────────────────────
 tiers:
   Normal:
-    level: 低风险
     urgency: 1
-    summary: 文本未见明显负面情绪或风险信号，属于日常状态。
-    actions:
-      - 维持现有社会支持与正向生活习惯（规律作息、运动、社交）
-      - 提供心理健康自助资源，鼓励情绪觉察与记录
-    monitor: 若后续出现持续性情绪低落或压力表述，升级关注。
+    user_facing:
+      summary: "Nothing here suggests you're struggling right now."
+      message: >
+        Thanks for checking in with yourself. Small habits — regular sleep,
+        movement, and keeping up with people you trust — do most of the work
+        in keeping you steady. Come back any time you want something to read.
+    staff_actions:
+      - Maintain existing social support and positive lifestyle habits (regular sleep, exercise, socializing)
+      - Provide mental-health self-help resources; encourage emotional awareness and journaling
+      - Escalate attention if persistent low mood or stress expressions appear later
 
   Anxiety:
-    level: 中低风险
     urgency: 2
-    summary: 文本呈现焦虑、紧张、过度担忧信号，尚未达到重度。
-    actions:
-      - 引导放松训练（呼吸调节、正念冥想）
-      - 介绍认知重构方法，识别与挑战灾难化思维
-      - 建议建立规律作息与适度运动以缓解生理性焦虑
-    monitor: 关注是否出现回避行为、睡眠恶化或功能受损，必要时升级。
+    user_facing:
+      summary: "You sound under pressure — tense, worried, keyed up."
+      message: >
+        When everything feels urgent, slowing your breathing down actually
+        helps — it's not a platitude, it changes the signal your body sends
+        back. Below are a few things other people in the same spot found
+        useful. If the pressure builds instead of easing, that's worth
+        saying out loud to someone.
+    staff_actions:
+      - Guide relaxation training (breathing regulation, mindfulness meditation)
+      - Introduce cognitive restructuring; identify and challenge catastrophic thinking
+      - Suggest regular routine and moderate exercise to ease physical anxiety
+      - Watch for avoidance behaviour, worsening sleep, or functional impairment
 
   Depression:
-    level: 中高风险
     urgency: 3
-    summary: 文本呈现持续低落、兴趣丧失、无力感等抑郁信号。
-    actions:
-      - 建议尽快寻求专业心理咨询或精神科评估
-      - 强化社会支持：鼓励向可信亲友倾诉，避免长期独处
-      - 建立行为激活计划（小目标、日常活动安排）
-      - 提示预警信号：自责、无价值感、睡眠/食欲显著改变
-    monitor: 密切监测自杀意念相关表述，一旦触及立即升级为高危处置。
+    user_facing:
+      summary: "It sounds like things have been heavy for a while."
+      message: >
+        Feeling flat or empty for days on end is a sign you've been carrying
+        more than you should have to alone. Talking to a professional isn't
+        a last resort — it's the fastest route back to feeling like yourself.
+        You don't have to have the right words first.
+    staff_actions:
+      - Recommend prompt professional counseling or psychiatric evaluation
+      - Strengthen social support: encourage confiding in trusted friends/family; avoid prolonged isolation
+      - Build behavioural activation plan (small goals, daily activities)
+      - Flag warning signs: self-blame, worthlessness, marked sleep/appetite change
+      - Monitor for suicidal ideation; escalate to crisis handling if it appears
 
   Suicidal:
-    level: 高风险(紧急)
     urgency: 4
-    summary: 文本呈现明确的自杀意念、自伤计划或绝望感，需紧急处置。
-    actions:
-      - 立即危机干预：保持陪伴，切勿让其独处
-      - 移除可及的危险物品与环境风险
-      - 直接转介心理危机干预热线/精神科急诊
-      - 鼓励并协助联系可信赖的家人或朋友共同照护
-    monitor: 必须持续跟进直至专业机构接手，不可仅凭一次对话解除风险。
+    user_facing:
+      summary: "What you wrote sounds like you're in real danger right now."
+      message: >
+        Please don't sit with this alone. If you can, tell someone physically
+        near you, or call one of the lines below — they pick up 24/7 and you
+        don't need to explain yourself perfectly first. If you're in immediate
+        danger, please contact your local emergency number.
+    staff_actions:
+      - Immediate crisis intervention: stay with them, never leave alone
+      - Remove accessible dangerous items and environmental risks
+      - Direct referral to crisis hotline / psychiatric emergency
+      - Encourage and assist contact with trusted family or friends for shared care
+      - Maintain follow-up until a professional service takes over; a single conversation does not clear the risk
 
 # ─────────────────────────────────────────────────────────────
-# 压力源针对性补充建议（key 与 target_issue 枚举一致，多一个 General 兜底）
+# Stressor-specific suggestions (keys match the target_issue enum + General)
+# These are shown to the user, so they stay second-person and practical.
 # ─────────────────────────────────────────────────────────────
 stressor_advice:
-  Academic_Stress:    针对学业压力：建议分解目标、制定复习与提交计划，善用学校心理咨询与朋辈支持。
-  Appearance_Anxiety: 针对外貌与身材焦虑：建议减少对外貌的过度关注，练习身体接纳与自我关怀。
-  Interpersonal:      针对人际与社交压力：建议降低过度社会比较，建立小范围高质量支持关系。
-  Family:             针对家庭关系压力：建议改善沟通方式，必要时引入家庭咨询或代际沟通技巧。
-  Financial_Stress:   针对经济压力：建议梳理收支与可用援助资源，缓解不确定性带来的焦虑。
-  Career_Future:      针对工作与职业压力：建议厘清工作量边界与职业规划，必要时寻求职业咨询。
-  Emotional_Health:   针对情绪与自我压力：建议减少自我苛责，练习自我关怀与价值澄清。
-  Sleep_Disorder:     针对睡眠困扰：建议固定作息、减少睡前屏幕暴露，必要时寻求睡眠门诊评估。
-  General:            针对其他生活事件压力：建议具体问题具体拆解，分阶段应对。
+  Academic_Stress:    "Study pressure: break the workload into pieces small enough to start, and use the counselling and peer support your school already pays for."
+  Appearance_Anxiety: "Body and appearance worries: try spending less time checking and more time doing things your body lets you do."
+  Interpersonal:      "Friendship and social friction: fewer comparisons, and one or two people you can actually be honest with, beats a wide circle."
+  Family:             "Family tension: small changes in how you raise a subject often work better than big conversations. Family counselling is an option if it keeps looping."
+  Financial_Stress:   "Money worries: writing down the actual numbers usually shrinks the fear, and there may be hardship support you haven't claimed."
+  Career_Future:      "Work and career uncertainty: draw a boundary around what you control this week, and get advice on the rest from someone in the field."
+  Emotional_Health:   "Low mood and self-criticism: talk to yourself the way you'd talk to a friend in the same situation — it changes more than it sounds like it would."
+  Sleep_Disorder:     "Sleep trouble: a fixed wake time and screens out of the last hour do more than any sleep app. Persistent insomnia is worth a clinic visit."
+  General:            "Whatever it is: naming the single hardest part makes the rest easier to move."
 
 # ─────────────────────────────────────────────────────────────
-# 公开危机干预资源（urgency >= 4 时随话术卡一并下发）
+# Crisis resources (shipped with the card when urgency >= 4)
+# Replace per launch region before go-live.
 # ─────────────────────────────────────────────────────────────
 resources:
-  - name: 全国24小时心理援助热线
-    phone: "400-161-9995"
-  - name: 北京心理危机研究与干预中心
-    phone: "010-82951332"
-  - name: 希望24热线(自杀防治)
-    phone: "400-161-9995"
+  - name: "988 Suicide & Crisis Lifeline (US)"
+    contact: "Call or text 988"
+  - name: "Samaritans (UK & Ireland)"
+    contact: "Call 116 123"
+  - name: "Crisis Text Line (US)"
+    contact: "Text HOME to 741741"
+  - name: "Find a helpline in your country"
+    contact: "findahelpline.com"
