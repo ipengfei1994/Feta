@@ -33,44 +33,44 @@ from src.embedder import HashingEmbedder, SentenceTransformerEmbedder
 POOL = os.path.join("data", "interventions.csv")
 TOP_K = 5
 
-# (中文用户原文, 模拟 classifier 产出的英文 embedding_prompt, 期望归因)
+# (中文用户原文, classifier 产出的英文 embedding_prompt（不带 issue 前缀）, 期望归因)
 QUERIES = [
     ("照镜子总觉得自己长得不好看，好焦虑",
-     "Appearance_Anxiety Seeking self-acceptance and body confidence, coping with anxiety about looks",
+     "Seeking self-acceptance and body confidence, coping with anxiety about looks",
      "Appearance_Anxiety"),
     ("考试挂了两科，绩点要完了，复习不进去",
-     "Academic_Stress Coping with exam failure and study pressure, seeking motivation and calm focus",
+     "Coping with exam pressure and study stress, seeking motivation and calm focus",
      "Academic_Stress"),
     ("室友天天闹矛盾，宿舍待不下去了",
-     "Interpersonal Resolving roommate conflict and friendship problems, seeking communication skills",
+     "Resolving friendship and roommate conflict, seeking communication skills and connection",
      "Interpersonal"),
     ("爸妈总吵架，家里的气氛让我窒息",
-     "Family Coping with parents arguing and family tension, seeking emotional support",
+     "Coping with family tension and parents arguing, seeking emotional support",
      "Family"),
     ("生活费不够用，又不好意思找家里要",
-     "Financial_Stress Coping with money worries and budgeting stress as a student",
+     "Coping with money worries and budgeting stress as a student",
      "Financial_Stress"),
     ("找不到实习，毕业就失业，前途一片黑暗",
-     "Career_Future Overcoming job hunting anxiety and career uncertainty, staying hopeful",
+     "Overcoming job hunting anxiety and career uncertainty, staying hopeful about the future",
      "Career_Future"),
     ("心里空落落的，做什么都提不起劲",
-     "Emotional_Health Lifting low mood and emptiness, finding hope and emotional balance",
+     "Lifting low mood and emptiness, finding hope and emotional balance",
      "Emotional_Health"),
     ("连续失眠两周，白天根本撑不住",
-     "Sleep_Disorder Improving sleep quality, relaxation techniques for insomnia relief",
+     "Improving sleep quality, relaxation techniques for insomnia relief",
      "Sleep_Disorder"),
     ("心情低落，想放松一下",
-     "General Relaxation and mindfulness, gentle comfort and positive energy",
+     "Relaxation and mindfulness, gentle comfort and positive energy",
      "General"),
 ]
 
 
 def load_pool() -> tuple[list[str], np.ndarray, list[str]]:
-    """读取干预池：文本（issue+text 拼接，与构建时同构）、向量、归因标签。"""
+    """读取干预池：文本（与构建时同构，不带 issue 前缀）、向量、归因标签。"""
     texts, vecs, issues = [], [], []
     with open(POOL, encoding="utf-8") as f:
         for r in csv.DictReader(f):
-            texts.append(f"{r['target_issue']} {r['text']}")
+            texts.append(r["text"])
             vecs.append(np.fromstring(r["embedding"], sep=" ", dtype="float32"))
             issues.append(r["target_issue"])
     return texts, np.stack(vecs), issues

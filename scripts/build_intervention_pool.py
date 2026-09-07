@@ -293,9 +293,10 @@ def main():
     # ②③ 清洗 + 筛选 + 打标
     records = build_pool(cfg, args.backend, args.limit)
 
-    # ④ 向量预计算（离线批量，向量空间与用户向量同构：issue 标签并入正文）
+    # 向量预计算（离线批量，向量空间与用户向量同构：只用正文，不带 issue 前缀
+    # ——与 classifier.embedding_prompt 保持一致，避免 issue token 污染向量空间）
     embedder = Embedder(backend=args.backend)
-    texts = [f"{r['target_issue']} {r['text']}" for r in records]
+    texts = [r["text"] for r in records]
     print(f"[嵌入] 后端={embedder.name}，批量编码 {len(texts)} 条 …")
     vecs = embedder.embed_batch(texts)
 
