@@ -14,7 +14,14 @@ data/embeddings/
 data/training.1600000.processed.noemoticon.csv/
 
 # 模型权重（90MB，由 ModelScope 下载，见设计文档 1.5.1）
+# 风险四分类 joblib 同样放 models/risk_classifier/，由 NLP 同学提供，不入库
 models/
+
+# macOS zip 解压副产物
+__MACOSX/
+
+# NLP 同学建模交付物（内部资料；已接入的权重拷贝在 models/risk_classifier/）
+建模/
 
 # 前期准备资料（PDF 论文 / 调研文档 / 原始项目说明，不入库）
 feta资料/

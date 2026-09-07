@@ -38,19 +38,35 @@ profile_data 结构：
 from __future__ import annotations
 
 import csv
+import functools
+import os
 from typing import Optional
 
 import numpy as np
+import yaml
 
 try:
     from src.referral import ReferralLogger   # 项目内包导入（pipeline 场景）
 except ImportError:                            # 直接执行 src/recommender.py 时
     from referral import ReferralLogger
 
+# 危机话术库路径（按风险等级分级，见 data/crisis_playbook.yaml）
+_PLAYBOOK_PATH = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..", "data", "crisis_playbook.yaml")
+)
+
+
+@functools.lru_cache(maxsize=1)
+def _load_crisis_playbook() -> dict:
+    """加载危机话术库 YAML。lru_cache 避免重复 IO。"""
+    with open(_PLAYBOOK_PATH, encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
 # 触发后台转介的高危等级默认值（config 未配置时兜底）
 DEFAULT_REFERRAL_LEVELS = {"Suicidal"}
 
-# 危机资源卡片默认内容（config 未配置时兜底）——附在 feed 后，不作为唯一输出
+# 危机资源卡片默认内容（话术库缺失时兜底）——附在 feed 后，不作为唯一输出
 DEFAULT_HOTLINE_CARD = {
     "id": "hotline-001",
     "text": "你现在可能正经历非常艰难的时刻，请立即联系可信赖的人，"
@@ -157,8 +173,40 @@ class Recommender:
                 target_issue=profile_data.get("target_issue", ""),
                 context=profile_data.get("original_text", ""),
             )
-            return "SUCCESS_WITH_REFERRAL", referral, [dict(self.hotline_card)]
+            return "SUCCESS_WITH_REFERRAL", referral, [self._crisis_card(risk_level, profile_data)]
         return "SUCCESS", None, []
+
+    def _crisis_card(self, risk_level: str, profile_data: dict) -> dict:
+        """按风险等级组装危机话术卡：分级处置动作 + 压力源建议 + 紧急热线。
+
+        话术库缺失或读取异常时回退到单行热线卡，保证高危路径始终有内容下发。
+        """
+        try:
+            playbook = _load_crisis_playbook()
+        except Exception:
+            return dict(self.hotline_card)
+
+        tiers = playbook.get("tiers", {})
+        tier = tiers.get(risk_level) or tiers.get("Normal")
+        if not tier:
+            return dict(self.hotline_card)
+
+        advice = playbook.get("stressor_advice", {})
+        target_issue = profile_data.get("target_issue", "")
+        card = {
+            "id": f"crisis-{risk_level.lower()}",
+            "text": tier["summary"],
+            "target_issue": "Crisis_Intervention",
+            "level": tier["level"],
+            "urgency": tier["urgency"],
+            "summary": tier["summary"],
+            "actions": list(tier["actions"]),
+            "monitor": tier["monitor"],
+            "stressor_advice": advice.get(target_issue) or advice.get("General", ""),
+        }
+        if tier["urgency"] >= 4:
+            card["resources"] = [dict(r) for r in playbook.get("resources", [])]
+        return card
 
     # ------------------------ ② 归因硬/软召回 ------------------------
     def _recall(self, profile_data: dict, top_k: int) -> list[int]:

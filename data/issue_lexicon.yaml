@@ -5,25 +5,208 @@
 #
 # 路径：data/issue_lexicon.yaml
 # 加载方：src/classifier.py (_load_lexicon, 模块级 lru_cache 缓存)
+#
+# 匹配规则（由 classifier._hit() 实现）：
+#   - 纯 ASCII 关键词 → 按单词边界匹配（避免 fat 命中 fate），大小写不敏感
+#   - 含中文的关键词 → 子串匹配（中文无空格分词）
+#   - 词组（如 want to die）按连续词序列匹配
 
 # ─────────────────────────────────────────────────────────────
 # 8 大压力源归因词表
 #   key   : target_issue 枚举名（与干预池打标对齐，**禁止改名**）
-#   value : 触发该归因的中文关键词列表（命中即累计 1 分）
+#   value : 触发该归因的关键词列表（命中即累计 1 分）
+#
+# 当前主链路为英文（模型与干预池均为英文语料），英文词为主力；
+# 中文词保留用于中文输入与后续中文语料扩展。
 # ─────────────────────────────────────────────────────────────
 target_issues:
-  Academic_Stress:    [考试, 成绩, 挂科, 作业, 论文, 绩点, 复习, 保研, 考研, 学业]
-  Appearance_Anxiety: [容貌, 长相, 外貌, 颜值, 身材, 太胖, 太瘦, 整容, 照镜子, 不好看, 丑]
-  Interpersonal:      [朋友, 室友, 孤立, 吵架, 排挤, 社交, 分手, 冷战, 合不来]
-  Family:             [父母, 家人, 家庭, 催婚, 重男轻女, 吵架]
-  Financial_Stress:   [没钱, 穷, 兼职, 学费, 生活费, 经济]
-  Career_Future:      [找工作, 就业, 实习, 未来, 迷茫, 毕业, offer]
-  Emotional_Health:   [难过, 崩溃, 低落, 孤独, emo, 抑郁, 焦虑, 压力大, 累]
-  Sleep_Disorder:     [失眠, 睡不着, 睡眠, 熬夜, 多梦]
+  Academic_Stress:
+    - 考试
+    - 成绩
+    - 挂科
+    - 作业
+    - 论文
+    - 绩点
+    - 复习
+    - 保研
+    - 考研
+    - 学业
+    - exam
+    - exams
+    - grades
+    - grade
+    - homework
+    - assignment
+    - thesis
+    - study
+    - studying
+    - school
+    - college
+    - university
+    - deadline
+    - coursework
+    - semester
+    - finals
+    - gpa
+    - dissertation
+    - lecture
+    - professor
+  Appearance_Anxiety:
+    - 容貌
+    - 长相
+    - 外貌
+    - 颜值
+    - 身材
+    - 太胖
+    - 太瘦
+    - 整容
+    - 照镜子
+    - 不好看
+    - 丑
+    - ugly
+    - fat
+    - overweight
+    - appearance
+    - looks
+    - body
+    - weight
+    - mirror
+    - unattractive
+    - insecure
+    - skinny
+    - acne
+    - shame
+  Interpersonal:
+    - 朋友
+    - 室友
+    - 孤立
+    - 排挤
+    - 社交
+    - 分手
+    - 冷战
+    - 合不来
+    - friend
+    - friends
+    - friendship
+    - roommate
+    - lonely
+    - isolated
+    - ignored
+    - excluded
+    - bullied
+    - argument
+    - conflict
+    - social
+    - breakup
+    - betrayed
+    - gossip
+    - nobody likes me
+  Family:
+    - 父母
+    - 家人
+    - 家庭
+    - 催婚
+    - 重男轻女
+    - parents
+    - parent
+    - mother
+    - father
+    - mom
+    - dad
+    - family
+    - household
+    - sibling
+    - brother
+    - sister
+    - home
+  Financial_Stress:
+    - 没钱
+    - 穷
+    - 兼职
+    - 学费
+    - 生活费
+    - 经济
+    - money
+    - broke
+    - poor
+    - rent
+    - debt
+    - tuition
+    - bills
+    - budget
+    - afford
+    - loan
+    - bankruptcy
+    - salary
+    - savings
+  Career_Future:
+    - 找工作
+    - 就业
+    - 实习
+    - 未来
+    - 迷茫
+    - 毕业
+    - job
+    - career
+    - internship
+    - future
+    - graduation
+    - graduate
+    - unemployment
+    - resume
+    - interview
+    - uncertain
+    - hopeless future
+    - career path
+    - quit
+  Emotional_Health:
+    - 难过
+    - 崩溃
+    - 低落
+    - 孤独
+    - emo
+    - 抑郁
+    - 焦虑
+    - 压力大
+    - 累
+    - sad
+    - depressed
+    - depression
+    - empty
+    - hopeless
+    - worthless
+    - exhausted
+    - overwhelming
+    - stress
+    - stressed
+    - anxious
+    - anxiety
+    - crying
+    - miserable
+    - numb
+    - pain
+    - hurt
+  Sleep_Disorder:
+    - 失眠
+    - 睡不着
+    - 睡眠
+    - 熬夜
+    - 多梦
+    - insomnia
+    - sleep
+    - sleeping
+    - asleep
+    - awake
+    - nightmare
+    - nightmares
+    - sleepless
+    - tired
+    - exhausted
+    - oversleep
 
 # ─────────────────────────────────────────────────────────────
 # 自杀/自伤关键词（任意一条命中即升级为 Suicidal）
-# 中英文双语，英文版用于英文 demo 与跨语种回归测试
+# 规则兜底用：模型可用时以模型输出为准，本表作为零特征/异常情况下的安全网
 # ─────────────────────────────────────────────────────────────
 suicide_keywords:
   # 中文
@@ -37,24 +220,74 @@ suicide_keywords:
   - 割腕
   # 英文
   - want to die
+  - wanna die
   - kill myself
   - end my life
+  - end it all
   - no reason to live
   - better off dead
   - can't go on
-  - end it all
+  - cannot go on
+  - suicide
+  - suicidal
+  - self harm
+  - hurt myself
+  - take my own life
+  - not want to live
+  - rather be dead
+  - goodbye forever
+  - disappear forever
+  - no point living
 
 # ─────────────────────────────────────────────────────────────
-# 风险等级判定关键词（情绪强度信号，与 target_issue 独立判定）
+# 风险等级判定关键词（模型不可用时的降级基线）
 #   判定优先级：Suicidal > Depression > Anxiety > Normal
 #   risk_level 用 NLP 同学的标准四档（Normal / Anxiety / Depression / Suicidal）
 #   target_issue 沿用项目自己的 8 大类压力源（见上）
 # ─────────────────────────────────────────────────────────────
 risk_level_keywords:
   # 抑郁/崩溃类：情绪低、能量低、自我评价低、与睡眠问题常共病
-  Depression: [崩溃, 低落, 孤独, emo, 抑郁, 难过, 压力大, 累, 失眠, 睡不着, 熬夜, 多梦]
+  Depression:
+    - 崩溃
+    - 低落
+    - 孤独
+    - emo
+    - 抑郁
+    - 难过
+    - 压力大
+    - 累
+    - 失眠
+    - 睡不着
+    - 熬夜
+    - 多梦
+    - depressed
+    - depression
+    - hopeless
+    - worthless
+    - empty
+    - numb
+    - miserable
+    - insomnia
+    - give up
   # 焦虑紧张类：紧张、担心、躯体紧张、烦躁
-  Anxiety:    [焦虑, 紧张, 担心, 害怕, 心慌, 烦躁]
+  Anxiety:
+    - 焦虑
+    - 紧张
+    - 担心
+    - 害怕
+    - 心慌
+    - 烦躁
+    - anxious
+    - anxiety
+    - worried
+    - worry
+    - nervous
+    - panic
+    - scared
+    - afraid
+    - overwhelmed
+    - stress
+    - stressed
 
 # ─────────────────────────────────────────────────────────────
 # embedding_prompt 模板：每条对应一个归因，用于生成英文语义描述

@@ -77,10 +77,11 @@ if __name__ == "__main__":
     p = Pipeline()
     print(f"嵌入后端：{p.embedder.name}")
 
+    # 当前主链路为英文：风险模型与干预池均为英文语料
     samples = [
-        "最近照镜子总觉得自己长得不好看，好焦虑，睡也睡不着。",
-        "考试挂了两科，绩点要完了，复习也复习不进去。",
-        "我真的活不下去了，没有人理解我，想结束这一切。",
+        "I feel so anxious about my exams, I cannot sleep at night.",
+        "I failed two courses and my grades are dropping, I cannot focus on studying.",
+        "I want to die, nobody cares about me anymore.",
     ]
     for s in samples:
         print("\n" + "=" * 64)
