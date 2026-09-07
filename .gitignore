@@ -38,3 +38,4 @@ docs/
 .uv/
 .DS_Store
 Thumbs.db
+models/**/*
