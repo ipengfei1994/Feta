@@ -102,6 +102,52 @@ profile_data = {
 }
 ```
 
+## 产品定位护栏（UI 必读）
+
+系统是**内容推荐**，**不是心理诊断**。这一节是 UI/产品/运营任何接触这批数据的人必须遵守的边界：
+
+### `risk_level` 字段的内部与对外语义
+
+`risk_level` 在数据流里出现两次，使用方式必须分清：
+
+| 出现位置 | 谁看 | 语义 | 展示方式 |
+|---|---|---|---|
+| `data/risk_referrals.csv` / 内部日志 | 运营/转接人员 | 风险筛查记录（四档：Normal / Anxiety / Depression / Suicidal） | 内部使用，不外露 |
+| `profile_data["risk_level"]` 传给 recommender | 后端 | 同上，仅用于路由（决定是否触发话术卡） | 不渲染到 UI |
+| `pipeline.run()["risk_level"]` 返回给 UI | UI | 同上 | **必须遮蔽**，见下条 |
+
+**绝对禁止**：把 `Normal / Anxiety / Depression / Suicidal` 任意一个字符串直接展示给终端用户。理由：
+
+- 这些标签继承自 NLP 同学用的 Mukherjee 临床标注数据集，是临床判读语义
+- 在 UI 上展示等于在告诉用户"我们诊断你是抑郁症/焦虑症"——本产品没有也不该有这种权威
+- `Suicidal` 一旦外泄还涉及隐私与伦理风险
+
+**UI 必须做的两件事**：
+1. 拿到 `risk_level` 后**只用于路由判断**（是否在推荐 feed 后追加危机话术卡）
+2. 若产品想给用户任何反馈，使用 user_facing 字段（`crisis_resources[].message` 或自行设计的关怀语），**不要自己拼 `risk_level` 字符串**
+
+### 危机话术卡的双受众字段
+
+`crisis_resources[0]` 来自 `data/crisis_playbook.yaml`，结构上分清：
+
+| 字段 | 受众 | UI 可渲染 |
+|---|---|---|
+| `summary` | 用户（第二人称关怀语） | ✅ |
+| `message` | 用户（详细关怀语） | ✅ |
+| `stressor_advice` | 用户（针对压力源的建议） | ✅ |
+| `resources` | 用户（热线） | ✅ |
+| `urgency` | 后端路由 | ❌（仅数字，不渲染） |
+
+仓库里**没有**面向用户的"诊断性总结"字段（如"系统判定您处于中度焦虑状态"）。若 UI 要做"系统状态"展示，必须先在仓库里增加对应的 user_facing 字段，不允许在 UI 层用 `risk_level` 自造文案。
+
+### 转介 CSV 的伦理约束
+
+`data/risk_referrals.csv` 持久化的是风险筛查记录（`risk_level=Suicidal` 时的画像摘要），**不是诊断记录**。在产品文档和隐私政策中必须明确：
+
+- 这是自动化文本风险筛查（risk screening），不是临床诊断（clinical diagnosis）
+- 该数据仅供内部转接通道使用，不与任何外部系统共享原始 `risk_level` 标签
+- 用户应有权在 UI 内看到自己的转介记录并申请删除
+
 高危时 `crisis_resources` 为单元素列表，结构见 `data/crisis_playbook.yaml`：
 
 ```python

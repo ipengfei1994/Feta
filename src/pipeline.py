@@ -75,7 +75,7 @@ def run_pipeline(raw_text: str,
 
 if __name__ == "__main__":
     p = Pipeline()
-    print(f"嵌入后端：{p.embedder.name}")
+    print(f"embed_backend: {p.embedder.name}")
 
     # 当前主链路为英文：风险模型与干预池均为英文语料
     samples = [
@@ -85,13 +85,15 @@ if __name__ == "__main__":
     ]
     for s in samples:
         print("\n" + "=" * 64)
-        print(f"输入：{s}")
+        print(f"input: {s}")
         r = p.run(s)
         prof = r["profile"]
-        print(f"status={r['status']}  风险等级={r['risk_level']}  归因={prof['target_issue']}")
+        print(f"status={r['status']}  risk_level={r['risk_level']}  target_issue={prof['target_issue']}")
         for rec in r["recommendations"]:
             print(f"  [id={rec['id']} | sim={rec['similarity_score']:.3f} | "
                   f"final={rec['final_score']:.3f}] ({rec['target_issue']}) {rec['text']}")
+        if r.get("crisis_resources"):
+            print(f"  [CRISIS card] {r['crisis_resources'][0]['text']}")
         if r["referral"]:
             print(f"  ⚠ 后台转介：{r['referral']['risk_level']} / "
                   f"{r['referral']['target_issue']} → 已写入 risk_referrals.csv")

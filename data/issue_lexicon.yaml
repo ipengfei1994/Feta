@@ -10,6 +10,21 @@
 #   - 纯 ASCII 关键词 → 按单词边界匹配（避免 fat 命中 fate），大小写不敏感
 #   - 含中文的关键词 → 子串匹配（中文无空格分词）
 #   - 词组（如 want to die）按连续词序列匹配
+#
+# ─────────────────────────────────────────────────────────────
+# 语言策略（2026-09 起，主链路已切英文）
+# ─────────────────────────────────────────────────────────────
+# 决策：当前产品面向英文用户，风险模型与干预池均为英文语料。
+#
+# 词表结构：
+#   - 每个 list 内部用 # zh: / # en: 注释标记语种（classifier 按字符自动分流，
+#     注释只是文档/审计提示，不影响匹配逻辑）
+#   - 英文词是主路径，每个 target_issue 必须有足够英文词覆盖
+#   - 中文词作为可选分支保留：
+#       * 给未来中文模型接入留接口（一旦训练出中文风险模型，词表立刻可用）
+#       * 给开发期手工调试 / 跨语种回归测试留路径
+#     **中文词不在主链路触发**，classifier 会自动跳过（见 _is_latin 检查）
+# ─────────────────────────────────────────────────────────────
 
 # ─────────────────────────────────────────────────────────────
 # 8 大压力源归因词表
@@ -17,10 +32,11 @@
 #   value : 触发该归因的关键词列表（命中即累计 1 分）
 #
 # 当前主链路为英文（模型与干预池均为英文语料），英文词为主力；
-# 中文词保留用于中文输入与后续中文语料扩展。
+# 中文词保留作为可选分支（详见文件顶部"语言策略"）。
 # ─────────────────────────────────────────────────────────────
 target_issues:
   Academic_Stress:
+    # zh:
     - 考试
     - 成绩
     - 挂科
@@ -31,6 +47,7 @@ target_issues:
     - 保研
     - 考研
     - 学业
+    # en:
     - exam
     - exams
     - grades
@@ -52,6 +69,7 @@ target_issues:
     - lecture
     - professor
   Appearance_Anxiety:
+    # zh:
     - 容貌
     - 长相
     - 外貌
@@ -63,6 +81,7 @@ target_issues:
     - 照镜子
     - 不好看
     - 丑
+    # en:
     - ugly
     - fat
     - overweight
@@ -77,6 +96,7 @@ target_issues:
     - acne
     - shame
   Interpersonal:
+    # zh:
     - 朋友
     - 室友
     - 孤立
@@ -85,6 +105,7 @@ target_issues:
     - 分手
     - 冷战
     - 合不来
+    # en:
     - friend
     - friends
     - friendship
@@ -102,11 +123,13 @@ target_issues:
     - gossip
     - nobody likes me
   Family:
+    # zh:
     - 父母
     - 家人
     - 家庭
     - 催婚
     - 重男轻女
+    # en:
     - parents
     - parent
     - mother
@@ -120,12 +143,14 @@ target_issues:
     - sister
     - home
   Financial_Stress:
+    # zh:
     - 没钱
     - 穷
     - 兼职
     - 学费
     - 生活费
     - 经济
+    # en:
     - money
     - broke
     - poor
@@ -140,12 +165,14 @@ target_issues:
     - salary
     - savings
   Career_Future:
+    # zh:
     - 找工作
     - 就业
     - 实习
     - 未来
     - 迷茫
     - 毕业
+    # en:
     - job
     - career
     - internship
@@ -160,6 +187,7 @@ target_issues:
     - career path
     - quit
   Emotional_Health:
+    # zh:
     - 难过
     - 崩溃
     - 低落
@@ -169,6 +197,7 @@ target_issues:
     - 焦虑
     - 压力大
     - 累
+    # en:
     - sad
     - depressed
     - depression
@@ -187,11 +216,13 @@ target_issues:
     - pain
     - hurt
   Sleep_Disorder:
+    # zh:
     - 失眠
     - 睡不着
     - 睡眠
     - 熬夜
     - 多梦
+    # en:
     - insomnia
     - sleep
     - sleeping
@@ -209,7 +240,7 @@ target_issues:
 # 规则兜底用：模型可用时以模型输出为准，本表作为零特征/异常情况下的安全网
 # ─────────────────────────────────────────────────────────────
 suicide_keywords:
-  # 中文
+  # zh (可选分支，不在主链路触发)
   - 自杀
   - 不想活
   - 轻生
@@ -218,7 +249,7 @@ suicide_keywords:
   - 解脱
   - 跳楼
   - 割腕
-  # 英文
+  # en (主链路，模型 recall 仅 0.699，规则兜底宁可假阳)
   - want to die
   - wanna die
   - kill myself
@@ -248,6 +279,7 @@ suicide_keywords:
 risk_level_keywords:
   # 抑郁/崩溃类：情绪低、能量低、自我评价低、与睡眠问题常共病
   Depression:
+    # zh (可选分支)
     - 崩溃
     - 低落
     - 孤独
@@ -260,6 +292,7 @@ risk_level_keywords:
     - 睡不着
     - 熬夜
     - 多梦
+    # en (主链路)
     - depressed
     - depression
     - hopeless
@@ -271,12 +304,14 @@ risk_level_keywords:
     - give up
   # 焦虑紧张类：紧张、担心、躯体紧张、烦躁
   Anxiety:
+    # zh (可选分支)
     - 焦虑
     - 紧张
     - 担心
     - 害怕
     - 心慌
     - 烦躁
+    # en (主链路)
     - anxious
     - anxiety
     - worried

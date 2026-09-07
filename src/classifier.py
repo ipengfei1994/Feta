@@ -150,9 +150,11 @@ def classify(cleaned_text: str) -> dict:
     else:
         issue = "General"
 
-    # embedding_prompt：英文语义描述（契约路径，详见 data/issue_lexicon.yaml 注释）
+    # embedding_prompt：英文自然语言描述，直接由模板提供。
+    # 不再拼接 issue 枚举名（"Academic_Stress" 等带下划线的 token 会被 BERT 切成
+    # subword，污染向量空间），模板本身已是语义完整的句子。
     prompt_template = prompts.get(issue, prompts["General"])
-    embedding_prompt = f"{issue} {prompt_template}"
+    embedding_prompt = prompt_template
 
     return {
         "risk_level": risk_level,
