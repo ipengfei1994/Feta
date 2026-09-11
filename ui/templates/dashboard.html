@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Feta · 监测后台</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <nav class="topnav">
+    <div class="logo"><span class="dot"></span>Feta</div>
+    <div class="nav-links">
+      <a href="/">信息流</a>
+      <a href="/dashboard" class="active">监测后台</a>
+    </div>
+  </nav>
+
+  <div class="layout">
+    <!-- 头部：标题 + 时间范围控件 -->
+    <div class="dash-head">
+      <h1><span class="live-dot"></span>监测后台</h1>
+      <div class="seg" id="segRange">
+        <button data-range="24h">24 小时</button>
+        <button data-range="7d" class="active">7 天</button>
+        <button data-range="30d">30 天</button>
+      </div>
+      <span class="chip plain" id="kpiRangeNote">过去 7 天</span>
+    </div>
+
+    <!-- 核心指标概览 -->
+    <section class="kpis">
+      <div class="card kpi">
+        <div class="label">监测动态总数</div>
+        <div class="value" id="kpiTotal">–</div>
+        <div class="delta" id="kpiRangeDelta"></div>
+      </div>
+      <div class="card kpi warn">
+        <div class="label">高危动态（抑郁+高危）</div>
+        <div class="value" id="kpiHigh">–</div>
+        <div class="delta">需人工复核</div>
+      </div>
+      <div class="card kpi warn">
+        <div class="label">待处理转介</div>
+        <div class="value" id="kpiPending">–</div>
+        <div class="delta">双轨模型 · 不拦截推荐</div>
+      </div>
+      <div class="card kpi ok">
+        <div class="label">平均置信度</div>
+        <div class="value" id="kpiConf">–</div>
+        <div class="delta">NLP 模型判定</div>
+      </div>
+    </section>
+
+    <!-- 图表区 -->
+    <section class="charts">
+      <div class="card">
+        <div class="card-h">风险等级分布 <span class="sub">四档</span></div>
+        <div class="card-b">
+          <div style="width:100%;height:82%">
+            <div id="chartDonut" style="height:100%"></div>
+            <div class="legend" id="legendRisk"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h">动态趋势 <span class="sub">总量 vs 高危</span></div>
+        <div class="card-b">
+          <div style="width:100%;height:82%">
+            <div id="chartTrend" style="height:100%"></div>
+            <div class="legend" id="legendTrend"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h">压力源分布 <span class="sub">Top 8</span></div>
+        <div class="card-b"><div id="chartBars" style="width:100%;height:100%"></div></div>
+      </div>
+    </section>
+
+    <!-- 告警列表 -->
+    <section class="card alerts" style="margin-bottom:18px">
+      <div class="card-h">
+        告警状态 <span class="sub" id="alertCounts"></span>
+        <div class="filters">
+          <div class="group" id="segStatus">
+            <button data-status="all" class="active">全部</button>
+            <button data-status="pending">待处理</button>
+            <button data-status="resolved">已处理</button>
+          </div>
+          <div class="group" id="segLevel">
+            <button data-level="all" class="active">全部级别</button>
+            <button data-level="anxiety">焦虑</button>
+            <button data-level="depression">抑郁</button>
+            <button data-level="suicidal">高危</button>
+          </div>
+        </div>
+      </div>
+      <div id="alertList"></div>
+    </section>
+
+    <!-- 单条文本实时分析 -->
+    <section class="card">
+      <div class="card-h">单条文本实时分析 <span class="sub">四段式 pipeline 全链路</span></div>
+      <div class="card-b analyze-grid">
+        <div>
+          <textarea id="anaText" placeholder="输入英文文本，如：I feel so anxious about my exams, I cannot sleep at night.（Ctrl+Enter 分析）"></textarea>
+          <div class="opts">
+            <select id="anaForce">
+              <option value="">按模型判定</option>
+              <option value="Suicidal">强制高危（演示危机卡）</option>
+            </select>
+            <button class="btn primary" id="btnAnalyze">开始分析</button>
+          </div>
+        </div>
+        <div class="result-panel" id="anaResult">
+          <span style="color:#9298a8;font-size:13px">分析结果将在这里展示（含风险等级、压力源归因、推荐与危机卡）</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="/static/js/charts.js"></script>
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

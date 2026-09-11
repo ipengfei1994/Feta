@@ -7,7 +7,8 @@
 - Python 3.13 + [uv](https://docs.astral.sh/uv/) 项目与依赖管理
 - `sentence-transformers`（`all-MiniLM-L6-v2`，384 维）语义向量
 - `scikit-learn` / `joblib` 风险四分类模型推理（TF-IDF + LogReg，英文）
-- `numpy` / `pyyaml` / `streamlit`（界面，规划中）
+- `numpy` / `pyyaml`
+- Web UI：Python 标准库 `http.server` + 原生 HTML/CSS/JS（**零前端依赖**，图表为手绘 SVG，离线可用）；`streamlit` 备用界面规划中
 
 ## 快速开始
 
@@ -18,7 +19,7 @@ uv sync
 # 2. 下载本地向量模型（从 ModelScope，约 90MB，零依赖脚本，绕开被代理拦截的 HuggingFace）
 uv run python scripts/download_model.py
 
-# 3. 构建干预池（从 Sentiment140 正向推文清洗→筛选→打标→向量预计算）
+# 3. 构建干预池（正式链路：Sentiment140 正向推文清洗→筛选→打标→向量预计算）
 uv run python scripts/build_intervention_pool.py --backend auto
 
 # 4. 跑端到端流水线（规则基线演示）
@@ -26,15 +27,40 @@ uv run python src/pipeline.py
 
 # 5. 跑推荐模块独立测试
 uv run python src/recommender.py
+
+# 6. 启动 Web UI（信息流 + 监测后台）
+uv run python ui/server.py
+# Windows 也可直接双击 start_ui.bat
 ```
 
 > 无需 uv 的队友可生成传统依赖清单：`uv export --format requirements-txt > requirements.txt`
+
+## Web UI
+
+启动后访问 `http://127.0.0.1:8765`（首次启动需加载本地模型并分析演示语料，约 30~60 秒）。
+
+| 页面 | 路径 | 内容 |
+|---|---|---|
+| 信息流 | `/` | 类微博 feed：动态卡片（头像/正文/配图）、点赞评论互动、时间线倒序、无限滚动；顶部发布框走真实 pipeline，发布后推荐内容以**无痕原生推文**形式紧随插入 |
+| 监测后台 | `/dashboard` | 核心指标面板、风险分布/趋势/压力源 SVG 图表、告警列表（状态×级别筛选、标记已处理）、单条文本实时分析、24h/7d/30d 时间范围切换 |
+
+**演示护栏**（与下文「产品定位护栏」一致，实现层已落实）：
+
+- 推荐内容伪装成真实用户推文（无痕植入），不带品牌/风险/匹配度标签；数据侧仅以 id 前缀 `rec-` 区分埋点
+- 危机卡只下发 `crisis_playbook.yaml` 的 user_facing 字段，`staff_actions` 永不出 API
+- 演示转介与告警落盘到 `data/demo_risk_referrals.csv` / `data/ui_alerts.csv`，与真实 `risk_referrals.csv` 完全隔离（均已 gitignore）
+
+演示语料由 `ui/mock_data.py` 生成（41 条英文模拟动态，时间分布最近 30 天），服务启动时逐条跑真实 pipeline 并缓存，非假数据。
 
 ## 目录结构
 
 ```
 feta/
-├── app/                  # Streamlit 界面
+├── ui/                   # Web UI 展示层（标准库零依赖）
+│   ├── server.py         # HTTP 服务 + JSON API（/api/feed, /api/metrics, /api/alerts, /api/publish, /api/analyze）
+│   ├── mock_data.py      # 演示语料生成（英文，覆盖四档风险与 8 大压力源）
+│   ├── templates/        # feed.html（信息流）/ dashboard.html（监测后台）
+│   └── static/           # css/style.css + js/{feed,dashboard,charts}.js（手绘 SVG 图表）
 ├── src/                  # 核心流水线
 │   ├── preprocess.py     # 文本清洗
 │   ├── classifier.py     # 风险等级 + 压力源归因 + embedding_prompt
@@ -43,7 +69,7 @@ feta/
 │   ├── recommender.py    # 召回与精排推荐层
 │   ├── referral.py       # 高危后台转介记录，不拦截推荐；推业务线通道预留
 │   └── pipeline.py       # 端到端编排
-├── data/                 # 词表 / 危机话术库 / interventions.csv 干预池 / risk_referrals.csv 转介记录 / 原始数据集
+├── data/                 # 词表 / 危机话术库（入库）；interventions.csv、转介与演示 CSV（不入库）
 ├── models/               # 本地模型权重（不入库）
 │   ├── all-MiniLM-L6-v2/      # 句向量模型，scripts/download_model.py 下载
 │   └── risk_classifier/       # 风险四分类模型，见「模型权重获取」
@@ -52,7 +78,8 @@ feta/
 │   ├── download_model.py             # 从 ModelScope 下载 all-MiniLM-L6-v2（零依赖）
 │   ├── build_intervention_pool.py    # Sentiment140 → interventions.csv
 │   ├── compare_backends.py           # TF-IDF vs BERT 基线对比
-│   └── make_demo_pool.py             # 中文演示池
+│   └── make_demo_pool.py             # 英文演示干预池（auto 后端，与 pipeline 同向量空间）
+├── start_ui.bat          # Windows 双击启动 Web UI
 ├── pyproject.toml        # uv 项目定义
 └── uv.lock               # 依赖精确锁定
 ```
@@ -173,4 +200,5 @@ profile_data = {
 ## 当前阶段边界
 
 - **英文数据集闭环即可**：整条流水线（classifier 英文 Prompt → 英文干预池 → 语义检索）以英文为验收标准；中文干预池（人工策展中文疏导内容）列为后续阶段，代码复用无需改动。
+- **Web UI 已可用**：`ui/` 信息流 + 监测后台即为当前展示形态（答辩演示入口）；streamlit 界面为备用方案，规划中。
 - **转介只后台落盘**：高危用户的后台转介当前只写入 `data/risk_referrals.csv`，「推给业务线」的自动推送通道（腾讯文档/企业微信/内部 API）为预留项，后续接通道只改 `src/referral.py`。

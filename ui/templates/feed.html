@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Feta · 信息流</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <!-- 顶部导航：logo / 页面切换 / 演示控件 -->
+  <nav class="topnav">
+    <div class="logo"><span class="dot"></span>Feta</div>
+    <div class="nav-links">
+      <a href="/" class="active">信息流</a>
+      <a href="/dashboard">监测后台</a>
+    </div>
+    <button class="btn" id="btnRiskTags">显示风险标签</button>
+    <button class="btn" id="btnCrisis">模拟高危会话</button>
+  </nav>
+
+  <div class="layout">
+    <div class="cols">
+      <!-- 主栏：发布入口 + 信息流容器（时间线倒序 + 无限滚动） -->
+      <main>
+        <div class="card composer">
+          <div class="c-row">
+            <div class="avatar" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">AF</div>
+            <textarea id="composerText" rows="2" placeholder="What's on your mind? 说点想说的…（英文内容可获得更贴心的推荐）"></textarea>
+          </div>
+          <div class="c-foot">
+            <span class="hint">✦ 发布后，可能会刷到和你心情合拍的分享</span>
+            <button class="btn primary" id="btnPublish">发布</button>
+          </div>
+        </div>
+        <div id="crisis-slot"></div>
+        <div class="feed" id="feed"></div>
+        <div class="sentinel" id="sentinel"></div>
+      </main>
+
+      <!-- 侧栏：用户侧内容（类微博右栏），<900px 隐藏 -->
+      <aside class="sidebar">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input type="text" placeholder="搜索校园话题、社团、同学" />
+        </div>
+        <div class="card">
+          <div class="card-h">校园热议</div>
+          <div class="card-b rank-list">
+            <div class="rank"><i>1</i><div><b>期末复习攻略交换</b><span>2.4万 讨论</span></div></div>
+            <div class="rank"><i>2</i><div><b>食堂二楼新开的窗口</b><span>1.8万 讨论</span></div></div>
+            <div class="rank"><i>3</i><div><b>秋天的校园随手拍</b><span>1.2万 讨论</span></div></div>
+            <div class="rank"><i>4</i><div><b>社团招新倒计时</b><span>9千 讨论</span></div></div>
+            <div class="rank"><i>5</i><div><b>今晚球赛预测</b><span>7千 讨论</span></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h">推荐关注</div>
+          <div class="card-b follow-list">
+            <div class="follow">
+              <div class="avatar" style="background:linear-gradient(135deg,#f59e0b,#d97706)">心</div>
+              <div class="fi"><b>心理健康中心</b><span>官方 · 每周三直播答疑</span></div>
+              <button class="btn small primary">关注</button>
+            </div>
+            <div class="follow">
+              <div class="avatar" style="background:linear-gradient(135deg,#10b981,#059669)">社</div>
+              <div class="fi"><b>夜跑社</b><span>社团 · 一起动起来</span></div>
+              <button class="btn small primary">关注</button>
+            </div>
+            <div class="follow">
+              <div class="avatar" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)">树</div>
+              <div class="fi"><b>树洞小站</b><span>匿名说说今天的心情</span></div>
+              <button class="btn small primary">关注</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h">需要聊聊吗？</div>
+          <div class="card-b">
+            <p class="care-tip">最近有点累、睡不好、或者只是想找人说说话——都很正常。这里有一些随时可以找到的倾听者：</p>
+            <div class="kv"><span>24h 倾听热线</span><b>400-161-9995</b></div>
+            <div class="kv"><span>校内心理咨询预约</span><b>校内分机 5120</b></div>
+            <button class="btn care-btn">和我聊聊，写点心里话</button>
+          </div>
+        </div>
+        <div class="side-foot">Feta · 让每一次倾诉都被温柔接住<br/>用户协议 · 隐私保护 · 帮助中心</div>
+      </aside>
+    </div>
+  </div>
+
+  <script src="/static/js/feed.js"></script>
+</body>
+</html>

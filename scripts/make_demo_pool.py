@@ -17,7 +17,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.embedder import HashingEmbedder
+from src.embedder import Embedder, HashingEmbedder
 
 # (id, text, target_issue, boost_score, tags, arousal_score, strategy)
 # id=3 / id=6 carry comparison/fast_paced tags or high arousal — used to verify
@@ -41,7 +41,12 @@ DEMO_ITEMS = [
 
 
 def main():
-    embedder = HashingEmbedder()
+    # 与 configs/config.yaml pool_builder.embedding_backend 对齐：auto 优先本地 MiniLM，
+    # 保证池向量与 pipeline 用户向量处于同一空间（否则余弦相似度失真）；失败回退哈希基线
+    try:
+        embedder = Embedder(backend="auto")
+    except Exception:
+        embedder = HashingEmbedder()
 
     # 向量编码：只用正文，不带 issue 前缀（与 classifier.embedding_prompt 保持一致）
     texts = [d[1] for d in DEMO_ITEMS]
