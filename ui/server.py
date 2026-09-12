@@ -32,8 +32,6 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE_DIR)
 os.chdir(BASE_DIR)  # pipeline/referral 均按相对路径读 data/、configs/
 
-import yaml
-
 from src.pipeline import Pipeline
 from ui.mock_data import build_posts, MOCK_COMMENTS, AUTHORS
 
@@ -54,12 +52,11 @@ class AppState:
     """全局状态：演示动态 + 逐条分析结果 + 告警列表。"""
 
     def __init__(self):
-        with open("configs/config.yaml", encoding="utf-8") as f:
-            cfg = yaml.safe_load(f)
-        # 演示转介走独立 CSV，不污染真实转介记录
-        cfg.setdefault("referral", {})["output"] = DEMO_REFERRAL_CSV
+        # 演示转介走独立 CSV，不污染真实转介记录。
+        # 注意：ReferralLogger 的落盘路径属性是 output_path（不是 output），
+        # 写错属性名会静默失效，把演示数据写进真实 risk_referrals.csv。
         self.pipeline = Pipeline("configs/config.yaml")
-        self.pipeline.recommender.referral_logger.output = DEMO_REFERRAL_CSV
+        self.pipeline.recommender.referral_logger.output_path = DEMO_REFERRAL_CSV
 
         self.posts = build_posts()
         self.analysis: dict[str, dict] = {}
@@ -75,28 +72,43 @@ class AppState:
             }
         self.alerts = self._build_alerts()
 
+    @staticmethod
+    def _make_alert(p: dict, a: dict) -> dict:
+        """由一条动态 + 其分析结果构造告警记录（启动聚合与发布时复用）。"""
+        reason = {
+            "Anxiety": "模型检出焦虑信号，建议关注",
+            "Depression": "模型检出抑郁信号，建议人工复核",
+            "Suicidal": "命中高危等级，已自动后台转介",
+        }[a["risk_level"]]
+        return {
+            "id": f"a{p['id']}",
+            "post_id": p["id"],
+            "timestamp": p["created_at"],
+            "risk_level": a["risk_level"],
+            "target_issue": a["target_issue"],
+            "reason": reason,
+            "status": "pending",
+            "referred": a["risk_level"] in ("Suicidal",),
+        }
+
     def _build_alerts(self) -> list[dict]:
-        """告警 = 非 Normal 动态聚合；Suicidal 附加「已转介」标记（双轨模型）。"""
+        """告警 = 非 Normal 动态聚合；Suicidal 附加「已转介」标记（双轨模型）。
+
+        重启重建时沿用已有 CSV 中的处理状态，避免「已处理」标记被重置回 pending。
+        """
+        prev_status: dict[str, str] = {}
+        if os.path.exists(ALERTS_CSV):
+            with open(ALERTS_CSV, encoding="utf-8", newline="") as f:
+                for row in csv.DictReader(f):
+                    prev_status[row["id"]] = row.get("status", "pending")
         alerts = []
         for p in self.posts:
             a = self.analysis[p["id"]]
             if a["risk_level"] == "Normal":
                 continue
-            reason = {
-                "Anxiety": "模型检出焦虑信号，建议关注",
-                "Depression": "模型检出抑郁信号，建议人工复核",
-                "Suicidal": "命中高危等级，已自动后台转介",
-            }[a["risk_level"]]
-            alerts.append({
-                "id": f"a{p['id']}",
-                "post_id": p["id"],
-                "timestamp": p["created_at"],
-                "risk_level": a["risk_level"],
-                "target_issue": a["target_issue"],
-                "reason": reason,
-                "status": "pending",
-                "referred": a["risk_level"] in ("Suicidal",),
-            })
+            alert = self._make_alert(p, a)
+            alert["status"] = prev_status.get(alert["id"], "pending")
+            alerts.append(alert)
         alerts.sort(key=lambda x: x["timestamp"], reverse=True)
         self._flush_alerts(alerts)
         return alerts
@@ -186,7 +198,9 @@ def api_feed(qs: dict) -> dict:
             cards.extend(_reco_card(p["id"]))
 
     crisis_card = None
-    if qs.get("crisis", ["0"])[0] == "1":
+    # 危机卡只在第一页组装：前端仅 page 1 渲染 crisis-slot；
+    # 且 pipeline.run 内部已自动落一条转介，无需再手动 log（否则每次请求写两行）
+    if qs.get("crisis", ["0"])[0] == "1" and page == 1 and page_posts:
         # 演示：强制高危会话，验证危机卡渲染（仅 user_facing 字段下发）
         r = STATE.pipeline.run(page_posts[0]["text"], force_risk_level="Suicidal")
         if r["crisis_resources"]:
@@ -196,12 +210,6 @@ def api_feed(qs: dict) -> dict:
                            "summary": c.get("summary", ""),
                            "message": c.get("message", ""),
                            "resources": c.get("resources", [])}
-        # 危机演示的转介记录（独立演示 CSV）
-        if r["referral"]:
-            STATE.pipeline.recommender.referral_logger.log(
-                risk_level="Suicidal",
-                target_issue=r["profile"].get("target_issue", ""),
-                context="ui_crisis_demo")
 
     return {"page": page, "page_size": size, "total": total,
             "has_more": start + size < total, "cards": cards,
@@ -242,11 +250,11 @@ def api_publish(body: dict) -> dict:
         "status": r["status"],
         "recommendations": r["recommendations"],
     }
-    if STATE.posts and STATE.posts[0].get("is_own"):
-        # 简化演示：同一会话多次发布时只保留最新一条自带推荐的动态
-        old = STATE.posts.pop(0)
-        STATE.analysis.pop(old["id"], None)
     STATE.posts.insert(0, post)
+    if r["risk_level"] != "Normal":
+        # 新发布的非 Normal 动态同步生成告警并落盘（启动期 _build_alerts 只覆盖演示语料）
+        STATE.alerts.insert(0, AppState._make_alert(post, STATE.analysis[pid]))
+        AppState._flush_alerts(STATE.alerts)
     recos = _reco_card(pid)
     return {
         "ok": True,
@@ -298,7 +306,8 @@ def api_metrics(qs: dict) -> dict:
         "total": len(posts),
         "high_risk": risks["Depression"] + risks["Suicidal"],
         "referrals_pending": pending,
-        "avg_confidence": round(sum(confs) / len(confs), 3) if confs else 0.0,
+        # 无模型判定样本时返回 None（前端显示 N/A），避免与真实 0% 混淆
+        "avg_confidence": round(sum(confs) / len(confs), 3) if confs else None,
     }
     issue_sorted = sorted(issues.items(), key=lambda kv: -kv[1])[:8]
     return {"range": rng, "kpi": kpi, "risk_distribution": risks,
@@ -334,7 +343,6 @@ def api_analyze(body: dict) -> dict:
         return {"error": "text is required"}
     force = body.get("force_risk_level") or None
     r = STATE.pipeline.run(text, force_risk_level=force)
-    a = STATE.analysis.get("__last__", {})
     prof = r["profile"]
     # 危机卡只下发 user_facing 字段（护栏：staff_actions 永不出 API）
     crisis = [{k: c[k] for k in ("id", "text", "summary", "message", "urgency")

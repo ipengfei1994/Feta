@@ -36,7 +36,8 @@
       $("kpiTotal").textContent = k.total;
       $("kpiHigh").textContent = k.high_risk;
       $("kpiPending").textContent = k.referrals_pending;
-      $("kpiConf").textContent = (k.avg_confidence * 100).toFixed(1) + "%";
+      $("kpiConf").textContent = k.avg_confidence == null
+        ? "N/A" : (k.avg_confidence * 100).toFixed(1) + "%";
       const rangeNote = range === "24h" ? "过去 24 小时" : `过去 ${RANGE_HOURS[range] / 24} 天`;
       $("kpiRangeNote").textContent = rangeNote;
       $("kpiRangeDelta").textContent = rangeNote;

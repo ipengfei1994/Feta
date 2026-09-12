@@ -217,17 +217,24 @@
     e.currentTarget.textContent = on ? "隐藏风险标签" : "显示风险标签";
   });
 
-  // 侧栏关注按钮：点击切换关注态
+  // 侧栏关注按钮：点击切换关注态（已关注 = 弱色 + 文案变化）
   document.querySelectorAll(".follow-list .btn").forEach(b =>
     b.addEventListener("click", () => {
-      const on = b.classList.toggle("primary");
+      const on = b.classList.toggle("following");
       b.textContent = on ? "已关注" : "关注";
-      if (on) b.classList.remove("primary");
+      b.classList.toggle("primary", !on);
     }));
 
   // 发布：走真实 pipeline，发布后自己的推文置顶并紧跟无痕推荐
   const composerText = document.getElementById("composerText");
   const btnPublish = document.getElementById("btnPublish");
+
+  // 侧栏「和我聊聊」：滚动到发布框并聚焦（原按钮无绑定，点了没反应）
+  const careBtn = document.querySelector(".care-btn");
+  if (careBtn) careBtn.addEventListener("click", () => {
+    composerText.scrollIntoView({ behavior: "smooth", block: "center" });
+    composerText.focus();
+  });
   async function publishText(text) {
     if (!text) { composerText.focus(); return false; }
     btnPublish.disabled = true; btnPublish.textContent = "发布中…";

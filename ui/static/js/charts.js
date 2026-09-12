@@ -33,6 +33,12 @@
       for (const d of data) {
         if (!d.value) continue;
         const frac = d.value / total;
+        if (frac >= 0.99999) {
+          // 单一分类占 100% 时 arc 起点=终点会被 SVG 跳过（渲染为空），改用整圆
+          svg.appendChild(el("circle", { cx, cy, r, fill: "none",
+            stroke: d.color, "stroke-width": sw }));
+          break;
+        }
         const a2 = angle + frac * 360;
         const large = frac > 0.5 ? 1 : 0;
         const p1 = polar(cx, cy, r, angle), p2 = polar(cx, cy, r, a2);
